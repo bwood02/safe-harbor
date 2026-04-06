@@ -4,33 +4,39 @@
 
 ---
 
-## 2026-04-06 -- Project Setup (Michael)
+## 2026-04-06 -- Project Setup & Repo Creation (Michael)
 
 **What was done:**
 - Created project directory structure under `is-core/safe-harbor/`
-- Created `CLAUDE.md` with full team collaboration instructions, git workflow, session protocol
+- Read and digested full 34-page INTEX W26 case PDF
+- Created `INSTRUCTIONS.md` as single source of truth for all AI tools
+- Created pointer files for Claude Code, Cursor, Copilot, Windsurf
 - Created `docs/` with CONTEXT.md, SESSION-LOG.md, DECISIONS.md, SETUP.md
-- Created master plan in `plans/`
-- Placed INTEX W26 Case PDF in `docs/`
+- Created master sprint plan with day-by-day task assignments
+- Created `.gitignore`, GitHub Actions CI pipeline, PR template
+- Initialized git repo, pushed to github.com/MCHammer-12/safe-harbor
 
-**Files created:**
-- `CLAUDE.md`
-- `docs/CONTEXT.md`
-- `docs/SESSION-LOG.md`
-- `docs/DECISIONS.md`
-- `docs/SETUP.md`
+**Files created/changed:**
+- `INSTRUCTIONS.md` -- main AI instructions
+- `CLAUDE.md` -- pointer for Claude Code
+- `.cursorrules` -- pointer for Cursor
+- `.github/copilot-instructions.md` -- pointer for GitHub Copilot
+- `.windsurfrules` -- pointer for Windsurf
+- `.github/workflows/ci.yml` -- CI pipeline (build backend, frontend, secret scan)
+- `.github/pull_request_template.md` -- PR checklist template
+- `docs/CONTEXT.md`, `docs/SESSION-LOG.md`, `docs/DECISIONS.md`, `docs/SETUP.md`
 - `plans/2026-04-06-intex-master-plan.md`
 - `.gitignore`
 
 **Decisions made:**
 - Project name: Safe Harbor (pending team vote)
-- Using CLAUDE.md for AI-driven team collaboration (auto-read by Claude Code)
+- Single `INSTRUCTIONS.md` with pointer files for multi-tool AI support
 - Git workflow: feature branches, conventional commits, squash merge to main
 - Domain-based branch prefixes to avoid merge conflicts
+- GitHub Actions CI on every PR: .NET build, React build, secret scan
 
 **Next steps:**
-- Initialize git repo and push to GitHub
-- Add team members as collaborators
+- Add team members as collaborators on GitHub
 - Download the 17 CSV data files from Google Drive
 - Start Monday deliverables (personas, journey map, MoSCoW, backlog, wireframes)
-- Set up .NET 10 backend and React/Vite frontend scaffolding
+- Scaffold the .NET 10 backend and React/Vite frontend
