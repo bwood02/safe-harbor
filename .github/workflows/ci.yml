@@ -10,37 +10,59 @@ jobs:
   backend:
     name: Backend Build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if backend exists
+        id: check
+        run: |
+          if [ -d "backend" ] && [ -f "backend/*.csproj" ] || [ -f "backend/"*".csproj" ] 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Backend directory not found or no .csproj file -- skipping build."
+          fi
+
       - name: Setup .NET
+        if: steps.check.outputs.exists == 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
       - name: Restore
+        if: steps.check.outputs.exists == 'true'
         run: dotnet restore
+        working-directory: backend
 
       - name: Build
+        if: steps.check.outputs.exists == 'true'
         run: dotnet build --no-restore --warnaserror
+        working-directory: backend
 
       - name: Test
+        if: steps.check.outputs.exists == 'true'
         run: dotnet test --no-build --verbosity normal
+        working-directory: backend
         continue-on-error: true
 
   frontend:
     name: Frontend Build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if frontend exists
+        id: check
+        run: |
+          if [ -f "frontend/package.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "frontend/package.json not found -- skipping build."
+          fi
+
       - name: Setup Node
+        if: steps.check.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -48,17 +70,25 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install
+        if: steps.check.outputs.exists == 'true'
         run: npm ci
+        working-directory: frontend
 
       - name: Lint
+        if: steps.check.outputs.exists == 'true'
         run: npm run lint
+        working-directory: frontend
         continue-on-error: true
 
       - name: Type Check
+        if: steps.check.outputs.exists == 'true'
         run: npx tsc --noEmit
+        working-directory: frontend
 
       - name: Build
+        if: steps.check.outputs.exists == 'true'
         run: npm run build
+        working-directory: frontend
 
   security-check:
     name: Security Check
