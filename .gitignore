@@ -1,0 +1,40 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+appsettings.Development.json
+appsettings.Local.json
+publish/
+
+# Node
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+
+# Python / ML
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.egg-info/
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.pem
+*.key
+*.pfx
+secrets/
