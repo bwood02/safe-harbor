@@ -4,7 +4,7 @@
 
 ---
 
-## 2026-04-07 -- README GitHub formatting & wellbeing notebook coef notes (Brand)
+## 2026-04-07 -- README GitHub formatting & wellbeing notebook coef notes (Brandon)
 
 **What was done:**
 - Reformatted `README.md` for GitHub-flavored Markdown (lists, fenced `git clone` block) without changing wording
