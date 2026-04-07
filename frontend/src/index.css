@@ -1,36 +1,28 @@
 @import 'tailwindcss';
+@import './styles/global.css';
 
 @theme {
-  /* Healing palette: mist, sage, soft teal, warm clay */
-  --color-sh-canvas: #f4f7f5;
-  --color-sh-surface: #ffffff;
-  --color-sh-ink: #1a2e2e;
-  --color-sh-muted: #5a6b6a;
-  --color-sh-subtle: #8a9a98;
-  --color-sh-primary: #3d6b6b;
-  --color-sh-primary-hover: #345d5d;
-  --color-sh-mist: #e8f1ef;
-  --color-sh-mist-deep: #d4e3df;
-  --color-sh-accent: #6b9fa8;
-  --color-sh-accent-soft: #c5dde1;
-  --color-sh-sage: #7d9b7e;
-  --color-sh-sage-soft: #dce8dc;
-  --color-sh-warm: #c17f59;
-  --color-sh-warm-hover: #a86d4c;
-  --color-sh-deep: #2a4545;
-  --color-sh-hero-from: #e8f1ef;
-  --color-sh-hero-to: #c5dde1;
-  --font-sans: ui-sans-serif, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-
-html {
-  font-family: var(--font-sans);
-}
-
-body {
-  margin: 0;
-  background: var(--color-sh-canvas);
-  color: var(--color-sh-ink);
+  /* Map existing sh-* utilities to design-system tokens */
+  --color-sh-canvas: var(--color-bg-main);
+  --color-sh-surface: var(--color-bg-card);
+  --color-sh-ink: var(--color-text-heading);
+  --color-sh-muted: var(--color-text-body);
+  --color-sh-subtle: var(--color-text-muted);
+  --color-sh-primary: var(--color-primary);
+  --color-sh-primary-hover: #a98559;
+  --color-sh-mist: var(--color-bg-section);
+  --color-sh-mist-deep: var(--color-border);
+  --color-sh-accent: var(--color-burgundy);
+  --color-sh-accent-soft: var(--color-bg-soft);
+  --color-sh-sage: var(--color-primary);
+  --color-sh-sage-soft: var(--color-bg-section);
+  --color-sh-warm: var(--color-primary);
+  --color-sh-warm-hover: #a98559;
+  --color-sh-deep: var(--color-burgundy);
+  --color-sh-hero-from: var(--color-bg-main);
+  --color-sh-hero-to: var(--color-bg-section);
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-heading);
 }
 
 /* Static demo controls only */
