@@ -4,6 +4,49 @@
 
 ---
 
+## 2026-04-07 -- Supabase wiring + Impact Dashboard + Landing Page slices (Michael)
+
+**What was done:**
+- Connected Supabase project `hfixzmwuqlrudcsslypz`, applied schema, seeded ~8,093 rows across 17 tables from `data/*.csv`
+- Added `@supabase/supabase-js` and `frontend/src/lib/supabase.ts` client
+- Created 3 SECURITY DEFINER RPC functions granted to anon for safe aggregate access: `impact_summary`, `outcome_distribution`, `donations_monthly_trend`
+- Built `useImpactData` hooks
+- **Slice B - Impact Dashboard:** wired `ImpactDashboardPage` to live data, replaced mocked stat cards, added monthly donation trend chart, loading skeletons + error states
+- **Slice A - Landing Page:** new `HomePage` at `/` with hero, live stats strip (30 girls / 9 safehouses / 59 donors), How We Help features, footer CTA
+- Updated `docs/SETUP.md` with full Supabase access section + teammate onboarding steps
+- Stored secrets in gitignored `.env.local`
+
+**Files changed:**
+- `frontend/src/lib/supabase.ts` (new)
+- `frontend/src/types/impact.ts` (new)
+- `frontend/src/hooks/useImpactData.ts` (new)
+- `frontend/src/pages/ImpactDashboardPage.tsx` (live data)
+- `frontend/src/pages/HomePage.tsx` (new)
+- `frontend/src/router.tsx` (route `/` → HomePage)
+- `frontend/.env.example` (new)
+- `frontend/package.json`, `package-lock.json`
+- `docs/SETUP.md` (Supabase section)
+- `.gitignore`
+
+**Decisions made:**
+- Read-only frontend slices query Supabase directly via anon key + RPC functions; no .NET backend needed yet
+- RPC functions are SECURITY DEFINER returning aggregates only (no PII) so anon-key access stays safe
+- Landing page branch built on top of impact-dashboard branch (shared `useImpactSummary`); PR #4 must merge after PR #3
+- Secrets in `.env.local` and team Slack/1Password, never committed
+- Used Supabase CLI with PAT for bulk seeding after IPv6/pooler issues blocked direct psql
+
+**PRs opened:**
+- PR #3 — feature/impact-dashboard
+- PR #4 — feature/landing-page (depends on #3)
+
+**Next steps:**
+- Merge PR #3, then PR #4
+- Begin .NET backend scaffolding (auth + admin CRUD)
+- Identity DB decision (separate Supabase project vs schema)
+- Continue Tuesday design deliverables
+
+---
+
 ## 2026-04-07 -- README GitHub formatting & wellbeing notebook coef notes (Brandon)
 
 **What was done:**
