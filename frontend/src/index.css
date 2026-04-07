@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Healing palette: mist, sage, soft teal, warm clay */
+  --color-sh-canvas: #f4f7f5;
+  --color-sh-surface: #ffffff;
+  --color-sh-ink: #1a2e2e;
+  --color-sh-muted: #5a6b6a;
+  --color-sh-subtle: #8a9a98;
+  --color-sh-primary: #3d6b6b;
+  --color-sh-primary-hover: #345d5d;
+  --color-sh-mist: #e8f1ef;
+  --color-sh-mist-deep: #d4e3df;
+  --color-sh-accent: #6b9fa8;
+  --color-sh-accent-soft: #c5dde1;
+  --color-sh-sage: #7d9b7e;
+  --color-sh-sage-soft: #dce8dc;
+  --color-sh-warm: #c17f59;
+  --color-sh-warm-hover: #a86d4c;
+  --color-sh-deep: #2a4545;
+  --color-sh-hero-from: #e8f1ef;
+  --color-sh-hero-to: #c5dde1;
+  --font-sans: ui-sans-serif, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  margin: 0;
+  background: var(--color-sh-canvas);
+  color: var(--color-sh-ink);
+}
+
+/* Static demo controls only */
+.wireframe-static button[type='button'][aria-disabled],
+.wireframe-static [aria-disabled='true'] {
+  cursor: default;
+}
