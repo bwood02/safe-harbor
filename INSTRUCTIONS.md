@@ -8,8 +8,8 @@
 
 **Safe Harbor** is a nonprofit web application for an organization that operates safe homes for girls who are survivors of sexual abuse and sex trafficking in the Philippines. It manages three domains: donor/support, case management, and social media outreach.
 
-- **Tech Stack:** .NET 10 / C# (backend), React / TypeScript with Vite (frontend), Supabase PostgreSQL (primary DB), ASP.NET Identity (auth)
-- **Deploy Target:** Vercel
+- **Tech Stack:** .NET 10 / C# (backend), React / TypeScript with Vite (frontend), Azure SQL Database (primary DB), ASP.NET Identity (auth)
+- **Deploy Target:** Azure (App Service / Static Web Apps)
 - **Due:** Friday April 10, 2026 at 10:00 AM
 - **Presentation:** Friday April 10 starting at 12:00 PM (20 min + 5 min Q&A)
 
@@ -264,6 +264,15 @@ Pipeline ideas across the three domains:
 - Use `async/await` consistently
 - No `any` types in TypeScript -- define interfaces in `frontend/src/types/`
 - API responses: use consistent JSON shape (`{ data, error, message }`)
+
+## Frontend Design System Rules
+
+- Before changing frontend styles, read `frontend/DESIGN_GUIDE.md`.
+- Use tokens and helper classes from `frontend/src/index.css` and `frontend/src/styles/design-tokens.css`.
+- Prefer semantic classes (`bg-background`, `text-foreground`, `text-primary`, `border-border`) over hardcoded color hex values.
+- Use `font-serif` for headings and `font-sans` for body/UI text.
+- Keep layouts responsive/adaptive across mobile, tablet, and laptop widths.
+- New pages should mirror spacing and component patterns used in existing frontend pages.
 
 ## What NOT to do
 

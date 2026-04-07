@@ -5,10 +5,10 @@ interface StatusBadgeProps {
 }
 
 const statusStyles: Record<ResidentStatus, string> = {
-  Active: 'bg-[#f4ebe6] text-[#8e4a59] border border-[#ebd7d9]',
-  'In Progress': 'bg-[#eef2f6] text-[#4a5f78] border border-[#dce4ee]',
-  Reintegrated: 'bg-[#eef5ef] text-[#426b52] border border-[#dce8e0]',
-  'At Risk': 'bg-[#fbf4eb] text-[#9b6a35] border border-[#f2e5d5]',
+  Active: 'sh-status-active',
+  'In Progress': 'sh-status-progress',
+  Reintegrated: 'sh-status-reintegrated',
+  'At Risk': 'sh-status-risk',
 };
 
 export default function StatusBadge({ status }: StatusBadgeProps) {

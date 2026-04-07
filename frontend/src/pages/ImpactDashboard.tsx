@@ -45,7 +45,7 @@ export default function ImpactDashboardPage() {
         className="relative min-h-[calc(100svh-72px)] flex items-center overflow-hidden py-6 md:py-8"
         aria-labelledby="hero-headline"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-[#fcfbf9] via-[#f7f2ed] to-[#f0e4df] -z-10" />
+        <div className="absolute inset-0 sh-warm-hero-bg -z-10" />
         
         <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 w-full">
           <div className="grid md:grid-cols-12 gap-6 md:gap-8 items-center">
@@ -79,9 +79,9 @@ export default function ImpactDashboardPage() {
             </div>
 
             <div className="md:col-span-6 lg:col-span-7 relative">
-              <div className="relative rounded-[2rem] overflow-hidden shadow-2xl aspect-[16/10] md:aspect-[4/4] lg:aspect-[4/3] max-h-[52svh] md:max-h-[58svh] bg-[#e6dcd8]">
+              <div className="relative rounded-[2rem] overflow-hidden shadow-2xl aspect-[16/10] md:aspect-[4/4] lg:aspect-[4/3] max-h-[52svh] md:max-h-[58svh] sh-warm-hero-art-base">
                 {/* Abstract warm art placeholder for hero */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#f2e5d5] via-[#e8d1c8] to-[#d4b5b0] opacity-80 mix-blend-multiply" />
+                <div className="absolute inset-0 sh-warm-hero-art-overlay opacity-80 mix-blend-multiply" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-foreground/60 to-transparent">
                   <p className="text-white text-base sm:text-lg font-serif italic text-shadow-sm">
                     "{featuredStory.imageCaption}"
@@ -213,9 +213,9 @@ export default function ImpactDashboardPage() {
           >
             {restorationStories.map((story, i) => {
               const warmGradients = [
-                'from-[#f2e5d5] to-[#e8d1c8]',
-                'from-[#e8d1c8] to-[#d4b5b0]',
-                'from-[#fcfbf9] to-[#f2e5d5]',
+                'sh-story-gradient-1',
+                'sh-story-gradient-2',
+                'sh-story-gradient-3',
               ];
 
               return (
@@ -225,7 +225,7 @@ export default function ImpactDashboardPage() {
                   aria-label={`Story card: ${story.title}`}
                 >
                   <div
-                    className={`w-full aspect-[16/9] bg-gradient-to-br ${warmGradients[i % 3]} relative`}
+                    className={`w-full aspect-[16/9] ${warmGradients[i % 3]} relative`}
                     aria-hidden="true"
                   >
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/5 transition-opacity duration-300" />

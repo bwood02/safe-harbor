@@ -8,7 +8,7 @@ INTEX W26 capstone project for IS 401 (PM), IS 413 (Dev), IS 414 (Security), IS 
 
 **Phase:** Tuesday Apr 7 -- Design
 **Sprint:** Tuesday -- Design + first deployed page
-**Deployed:** Frontend on Vercel (auto-deploy on main), Supabase PostgreSQL seeded
+**Deployed/Target:** Azure-hosted app with Azure SQL Database
 
 ### What exists
 - Project directory structure created
@@ -29,11 +29,17 @@ INTEX W26 capstone project for IS 401 (PM), IS 413 (Dev), IS 414 (Security), IS 
 |-------|-----------|
 | Frontend | React + TypeScript + Vite |
 | Backend | .NET 10 / C# Web API |
-| Database | Supabase PostgreSQL |
+| Database | Azure SQL Database |
 | Auth | ASP.NET Identity |
-| Hosting | Vercel |
+| Hosting | Azure (App Service / Static Web Apps) |
 | ML | Python / Jupyter notebooks |
 | Version Control | GitHub |
+
+### Frontend Design System
+
+- Canonical style guide: `frontend/DESIGN_GUIDE.md`
+- Token source: `frontend/src/index.css` and `frontend/src/styles/design-tokens.css`
+- Frontend styling updates should use semantic tokens/classes and avoid hardcoded hex values in page/component code.
 
 ## Key Deadlines
 
