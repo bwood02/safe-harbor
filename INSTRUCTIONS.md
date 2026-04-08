@@ -97,7 +97,7 @@ test: add unit tests for resident API
 - Pull from `main` before starting new work: `git pull origin main`
 - Rebase your branch on `main` before opening a PR: `git rebase main`
 - If two people must touch the same file, communicate first
-- Shared files (routes, App.tsx, DB context) -- coordinate changes in team chat
+- Shared files (routes, `App.tsx`, `MainAppController.cs`, `MainAppDbContext`) -- coordinate changes in team chat
 
 ## Project Structure
 
@@ -126,8 +126,8 @@ safe-harbor/
       api/               -- API client functions
       types/             -- TypeScript interfaces matching backend models
   backend/               -- .NET 10 / C# Web API
-    Controllers/         -- API controllers
-    Models/              -- EF Core entity models
+    Controllers/         -- API controllers (for now: MainAppController.cs only)
+    Models/              -- EF Core entity models + MainAppDbContext
     Data/                -- DbContext, migrations
     Services/            -- business logic
     Auth/                -- Identity config, roles, policies
@@ -240,6 +240,36 @@ Pipeline ideas across the three domains:
 **Case Management:** residents, process_recordings, home_visitations, education_records, health_wellbeing_records, intervention_plans, incident_reports
 
 **Outreach & Communication:** social_media_posts, safehouse_monthly_metrics, public_impact_snapshots
+
+Schema reference: `docs/schema.sql`.
+
+## Backend: Models, DbContext, and API routes (MVC-style layering)
+
+The backend is an **ASP.NET Core Web API** (JSON to the React app). It follows the same **Model–Controller** separation you use in ASP.NET MVC courses: **Models** represent database tables and shape what you read/write; **Controllers** expose HTTP routes and use those models together with Entity Framework Core.
+
+### Models (`backend/backend/Models/`)
+
+- Each **entity class** (e.g. `Donation`, `Resident`, `Safehouse`) maps to a table. Properties correspond to columns; navigation properties express relationships where configured.
+- **`MainAppDbContext`** is the EF Core **DbContext**. It holds `DbSet<T>` properties for each entity (e.g. `Donations`, `Residents`) and configuration for keys, relationships, and column types.
+- **Interacting with the database:** inject `MainAppDbContext` into a controller (constructor injection). Use `_context.<DbSet>` to query or change data, then `SaveChanges()` / `SaveChangesAsync()` when you add, update, or delete entities.
+- Prefer **async** database access in new code (`ToListAsync`, `FirstOrDefaultAsync`, `SaveChangesAsync`) so the server thread is not blocked under load.
+- Keep models aligned with `docs/schema.sql` and the case data dictionary. If the schema changes, update the entity classes and `MainAppDbContext` (and migrations if you use them) consistently.
+
+### Controllers and routing — `MainAppController.cs`
+
+- **At least for now, keep all API routes in `backend/backend/Controllers/MainAppController.cs`.** Do not add separate controller files for new endpoints until the team decides to split them. This keeps one place to look and reduces route conflicts during the sprint.
+- Add new actions as methods on `MainAppController`, with explicit HTTP verbs (`[HttpGet]`, `[HttpPost]`, etc.) and route templates as needed (e.g. `[HttpGet("residents")]`).
+- The controller already uses `[Route("api/[controller]")]`, so endpoints are under **`/api/MainApp/...`** unless you override the route on an action.
+- Apply **`[Authorize]`** and role requirements on CUD (create/update/delete) endpoints per the Security Requirements section.
+- Return types should stay consistent with the project API shape where applicable (`{ data, error, message }` for JSON payloads).
+
+### Summary
+
+| Piece | Role |
+|-------|------|
+| **Models** | EF Core entities + `MainAppDbContext` — single source of truth for DB shape in code |
+| **MainAppController** | All HTTP routes for now — inject `MainAppDbContext`, use models to read/write Azure SQL |
+| **React frontend** | Consumes the API; it replaces server-side “Views” in classic MVC |
 
 ## Sprint Schedule
 
