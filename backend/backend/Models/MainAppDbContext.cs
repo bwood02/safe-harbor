@@ -53,7 +53,7 @@ public partial class MainAppDbContext : DbContext
     {
         modelBuilder.Entity<Donation>(entity =>
         {
-            entity.Property(e => e.DonationId).ValueGeneratedNever();
+            entity.Property(e => e.DonationId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.ReferralPost).WithMany(p => p.Donations).HasConstraintName("FK_donations_social_media_posts");
 
@@ -64,7 +64,7 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<DonationAllocation>(entity =>
         {
-            entity.Property(e => e.AllocationId).ValueGeneratedNever();
+            entity.Property(e => e.AllocationId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Donation).WithMany(p => p.DonationAllocations)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -77,7 +77,7 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<EducationRecord>(entity =>
         {
-            entity.Property(e => e.EducationRecordId).ValueGeneratedNever();
+            entity.Property(e => e.EducationRecordId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Resident).WithMany(p => p.EducationRecords)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -88,7 +88,7 @@ public partial class MainAppDbContext : DbContext
         {
             entity.HasKey(e => e.HealthRecordId).HasName("PK_health_wellbeing_Records");
 
-            entity.Property(e => e.HealthRecordId).ValueGeneratedNever();
+            entity.Property(e => e.HealthRecordId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Resident).WithMany(p => p.HealthWellbeingRecords)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -97,7 +97,7 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<HomeVisitation>(entity =>
         {
-            entity.Property(e => e.VisitationId).ValueGeneratedNever();
+            entity.Property(e => e.VisitationId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Resident).WithMany(p => p.HomeVisitations)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -106,7 +106,7 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<InKindDonationItem>(entity =>
         {
-            entity.Property(e => e.ItemId).ValueGeneratedNever();
+            entity.Property(e => e.ItemId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Donation).WithMany(p => p.InKindDonationItems)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -115,7 +115,7 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<IncidentReport>(entity =>
         {
-            entity.Property(e => e.IncidentId).ValueGeneratedNever();
+            entity.Property(e => e.IncidentId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Resident).WithMany(p => p.IncidentReports)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -128,7 +128,7 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<InterventionPlan>(entity =>
         {
-            entity.Property(e => e.PlanId).ValueGeneratedNever();
+            entity.Property(e => e.PlanId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Resident).WithMany(p => p.InterventionPlans)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -137,12 +137,12 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<Partner>(entity =>
         {
-            entity.Property(e => e.PartnerId).ValueGeneratedNever();
+            entity.Property(e => e.PartnerId).ValueGeneratedOnAdd();
         });
 
         modelBuilder.Entity<PartnerAssignment>(entity =>
         {
-            entity.Property(e => e.AssignmentId).ValueGeneratedNever();
+            entity.Property(e => e.AssignmentId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Partner).WithMany(p => p.PartnerAssignments)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -153,7 +153,7 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<ProcessRecording>(entity =>
         {
-            entity.Property(e => e.RecordingId).ValueGeneratedNever();
+            entity.Property(e => e.RecordingId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Resident).WithMany(p => p.ProcessRecordings)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -162,12 +162,12 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<PublicImpactSnapshot>(entity =>
         {
-            entity.Property(e => e.SnapshotId).ValueGeneratedNever();
+            entity.Property(e => e.SnapshotId).ValueGeneratedOnAdd();
         });
 
         modelBuilder.Entity<Resident>(entity =>
         {
-            entity.Property(e => e.ResidentId).ValueGeneratedNever();
+            entity.Property(e => e.ResidentId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Safehouse).WithMany(p => p.Residents)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -176,12 +176,12 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<Safehouse>(entity =>
         {
-            entity.Property(e => e.SafehouseId).ValueGeneratedNever();
+            entity.Property(e => e.SafehouseId).ValueGeneratedOnAdd();
         });
 
         modelBuilder.Entity<SafehouseMonthlyMetric>(entity =>
         {
-            entity.Property(e => e.MetricId).ValueGeneratedNever();
+            entity.Property(e => e.MetricId).ValueGeneratedOnAdd();
 
             entity.HasOne(d => d.Safehouse).WithMany(p => p.SafehouseMonthlyMetrics)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -190,12 +190,12 @@ public partial class MainAppDbContext : DbContext
 
         modelBuilder.Entity<SocialMediaPost>(entity =>
         {
-            entity.Property(e => e.PostId).ValueGeneratedNever();
+            entity.Property(e => e.PostId).ValueGeneratedOnAdd();
         });
 
         modelBuilder.Entity<Supporter>(entity =>
         {
-            entity.Property(e => e.SupporterId).ValueGeneratedNever();
+            entity.Property(e => e.SupporterId).ValueGeneratedOnAdd();
         });
 
         OnModelCreatingPartial(modelBuilder);

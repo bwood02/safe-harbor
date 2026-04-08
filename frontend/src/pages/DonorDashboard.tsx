@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, Filter, Repeat, HandCoins, X } from 'lucide-react';
 import StaffHeader from '@/components/shared/StaffHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
-import { apiGet } from '@/lib/api';
-import type { DonorDashboardDonationDto, GetDonationsResponseDto } from '@/types/donorDashboard';
+import { apiGet, apiPost } from '@/lib/api';
+import type {
+  CreateDonationRequestDto,
+  DonorDashboardDonationDto,
+  GetDonationsResponseDto,
+} from '@/types/donorDashboard';
 
 type DonationType = 'Monetary' | 'InKind' | 'Time' | 'Skills' | 'SocialMedia';
 type ChannelSource = 'Campaign' | 'Event' | 'Direct' | 'SocialMedia' | 'PartnerReferral';
@@ -12,6 +16,23 @@ type ItemCategory = 'Food' | 'Supplies' | 'Clothing' | 'SchoolMaterials' | 'Hygi
 type UnitOfMeasure = 'pcs' | 'boxes' | 'kg' | 'sets' | 'packs';
 type IntendedUse = 'Meals' | 'Education' | 'Shelter' | 'Hygiene' | 'Health';
 type ReceivedCondition = 'New' | 'Good' | 'Fair';
+type CurrencyCode =
+  | 'USD'
+  | 'EUR'
+  | 'GBP'
+  | 'JPY'
+  | 'CAD'
+  | 'AUD'
+  | 'CHF'
+  | 'CNY'
+  | 'HKD'
+  | 'SGD'
+  | 'INR'
+  | 'KRW'
+  | 'MXN'
+  | 'BRL'
+  | 'ZAR'
+  | 'PHP';
 type AllocationArea =
   | 'Education'
   | 'Wellbeing'
@@ -25,8 +46,8 @@ interface DonationRow {
   supporter_id: number;
   donation_type: DonationType;
   donation_date: string;
-  channel_source: ChannelSource;
-  currency_code: string | null;
+  channel_source: ChannelSource | null;
+  currency_code: CurrencyCode | null;
   amount: number | null;
   estimated_value: number | null;
   impact_unit: ImpactUnit;
@@ -52,12 +73,31 @@ const ALLOCATION_AREAS: AllocationArea[] = [
   'Outreach',
 ];
 
-const MOCK_SUPPORTER_ID = 1001;
+const CURRENCY_OPTIONS: Array<{ code: CurrencyCode; symbol: string }> = [
+  { code: 'USD', symbol: '$' },
+  { code: 'EUR', symbol: '€' },
+  { code: 'GBP', symbol: '£' },
+  { code: 'JPY', symbol: '¥' },
+  { code: 'CAD', symbol: 'C$' },
+  { code: 'AUD', symbol: 'A$' },
+  { code: 'CHF', symbol: 'CHF' },
+  { code: 'CNY', symbol: 'CN¥' },
+  { code: 'HKD', symbol: 'HK$' },
+  { code: 'SGD', symbol: 'S$' },
+  { code: 'INR', symbol: '₹' },
+  { code: 'KRW', symbol: '₩' },
+  { code: 'MXN', symbol: 'MX$' },
+  { code: 'BRL', symbol: 'R$' },
+  { code: 'ZAR', symbol: 'R' },
+  { code: 'PHP', symbol: '₱' },
+];
+
 const DONOR_SUPPORTER_ID = 25;
 
 function formatAmount(donation: DonationRow): string {
   if (donation.currency_code && donation.amount != null) {
-    return `${donation.currency_code} ${donation.amount.toLocaleString(undefined, {
+    const symbol = CURRENCY_OPTIONS.find((c) => c.code === donation.currency_code)?.symbol ?? donation.currency_code;
+    return `${symbol} ${donation.amount.toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
@@ -71,10 +111,10 @@ function formatAmount(donation: DonationRow): string {
 function emptyDonationForm(): DonationRow {
   return {
     donation_id: 0,
-    supporter_id: MOCK_SUPPORTER_ID,
+    supporter_id: DONOR_SUPPORTER_ID,
     donation_type: 'Monetary',
     donation_date: '',
-    channel_source: 'Campaign',
+    channel_source: null,
     currency_code: 'PHP',
     amount: null,
     estimated_value: null,
@@ -90,6 +130,34 @@ function emptyDonationForm(): DonationRow {
     estimated_unit_value: null,
     intended_use: null,
     received_condition: null,
+  };
+}
+
+function mapDonationDtoToRow(d: DonorDashboardDonationDto): DonationRow {
+  const firstAllocation = d.donationAllocations[0]?.programArea as AllocationArea | undefined;
+  const firstItem = d.inKindDonationItems[0];
+  return {
+    donation_id: d.donationId,
+    supporter_id: d.supporterId,
+    donation_type: d.donationType as DonationType,
+    donation_date: d.donationDate ?? '',
+    channel_source: (d.channelSource as ChannelSource | null) ?? null,
+    currency_code: (d.currencyCode as CurrencyCode | null) ?? null,
+    amount: d.amount,
+    estimated_value: d.estimatedValue,
+    impact_unit: d.impactUnit as ImpactUnit,
+    is_recurring: d.isRecurring,
+    campaign_name: d.campaignName,
+    notes: d.notes,
+    allocation_area:
+      firstAllocation && ALLOCATION_AREAS.includes(firstAllocation) ? firstAllocation : 'Operations',
+    item_name: firstItem?.itemName ?? null,
+    item_category: (firstItem?.itemCategory as ItemCategory) ?? null,
+    quantity: firstItem?.quantity ?? null,
+    unit_of_measure: (firstItem?.unitOfMeasure as UnitOfMeasure) ?? null,
+    estimated_unit_value: firstItem?.estimatedUnitValue ?? null,
+    intended_use: (firstItem?.intendedUse as IntendedUse) ?? null,
+    received_condition: (firstItem?.receivedCondition as ReceivedCondition) ?? null,
   };
 }
 
@@ -124,34 +192,7 @@ export default function DonorDashboardPage() {
         }
         const data = response.data;
 
-        const rows: DonationRow[] = data.map((d: DonorDashboardDonationDto) => {
-          const firstAllocation = d.donationAllocations[0]?.programArea as AllocationArea | undefined;
-          const firstItem = d.inKindDonationItems[0];
-          return {
-            donation_id: d.donationId,
-            supporter_id: d.supporterId,
-            donation_type: d.donationType as DonationType,
-            donation_date: d.donationDate ?? '',
-            channel_source: (d.channelSource as ChannelSource) ?? 'Direct',
-            currency_code: d.currencyCode,
-            amount: d.amount,
-            estimated_value: d.estimatedValue,
-            impact_unit: d.impactUnit as ImpactUnit,
-            is_recurring: d.isRecurring,
-            campaign_name: d.campaignName,
-            notes: d.notes,
-            allocation_area: firstAllocation && ALLOCATION_AREAS.includes(firstAllocation)
-              ? firstAllocation
-              : 'Operations',
-            item_name: firstItem?.itemName ?? null,
-            item_category: (firstItem?.itemCategory as ItemCategory) ?? null,
-            quantity: firstItem?.quantity ?? null,
-            unit_of_measure: (firstItem?.unitOfMeasure as UnitOfMeasure) ?? null,
-            estimated_unit_value: firstItem?.estimatedUnitValue ?? null,
-            intended_use: (firstItem?.intendedUse as IntendedUse) ?? null,
-            received_condition: (firstItem?.receivedCondition as ReceivedCondition) ?? null,
-          };
-        });
+        const rows: DonationRow[] = data.map(mapDonationDtoToRow);
 
         setDonations(rows);
       } catch (err) {
@@ -207,11 +248,7 @@ export default function DonorDashboardPage() {
 
   function submitNewDonation(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setFormError('Submitting new donations is not wired yet.');
-    return;
 
-    // TODO: wire POST once auto-generated key strategy is finalized.
-    /*
     if (!form.supporter_id || form.supporter_id <= 0) {
       setFormError('Supporter ID is required.');
       return;
@@ -222,12 +259,11 @@ export default function DonorDashboardPage() {
       return;
     }
 
-    if (form.estimated_value == null || Number.isNaN(form.estimated_value)) {
-      setFormError('Estimated value is required.');
-      return;
-    }
-
     if (form.donation_type === 'InKind') {
+      if (form.estimated_value == null || Number.isNaN(form.estimated_value)) {
+        setFormError('Estimated value is required for non-monetary donations.');
+        return;
+      }
       if (
         !form.item_name?.trim() ||
         !form.item_category ||
@@ -244,25 +280,65 @@ export default function DonorDashboardPage() {
       }
     }
 
-    const normalized: DonationRow = {
-      ...form,
-      donation_id: Math.max(0, ...donations.map((d) => d.donation_id)) + 1,
-      campaign_name: form.campaign_name?.trim() || null,
-      notes: form.notes?.trim() || null,
-      currency_code: form.donation_type === 'Monetary' ? 'PHP' : null,
+    const requestBody: CreateDonationRequestDto = {
+      supporterId: form.supporter_id,
+      donationType: form.donation_type,
+      donationDate: form.donation_date || null,
+      isRecurring: form.is_recurring,
+      campaignName: form.campaign_name?.trim() || null,
+      channelSource: form.channel_source || null,
+      currencyCode: form.donation_type === 'Monetary' ? form.currency_code : null,
       amount: form.donation_type === 'Monetary' ? form.amount : null,
-      item_name: form.donation_type === 'InKind' ? form.item_name?.trim() ?? null : null,
-      item_category: form.donation_type === 'InKind' ? form.item_category : null,
-      quantity: form.donation_type === 'InKind' ? form.quantity : null,
-      unit_of_measure: form.donation_type === 'InKind' ? form.unit_of_measure : null,
-      estimated_unit_value: form.donation_type === 'InKind' ? form.estimated_unit_value : null,
-      intended_use: form.donation_type === 'InKind' ? form.intended_use : null,
-      received_condition: form.donation_type === 'InKind' ? form.received_condition : null,
+      estimatedValue:
+        form.donation_type === 'Monetary'
+          ? form.amount ?? 0
+          : form.estimated_value ?? 0,
+      impactUnit: form.impact_unit,
+      notes: form.notes?.trim() || null,
+      referralPostId: null,
+      donationAllocations: [
+        {
+          safehouseId: 1,
+          programArea: form.allocation_area,
+          amountAllocated:
+            form.donation_type === 'Monetary'
+              ? form.amount ?? 0
+              : form.estimated_value ?? 0,
+          allocationDate: form.donation_date,
+          allocationNotes: form.notes?.trim() || null,
+        },
+      ],
+      inKindDonationItems:
+        form.donation_type === 'InKind'
+          ? [
+              {
+                itemName: form.item_name?.trim() ?? '',
+                itemCategory: form.item_category ?? '',
+                quantity: form.quantity ?? 0,
+                unitOfMeasure: form.unit_of_measure ?? '',
+                estimatedUnitValue: form.estimated_unit_value ?? 0,
+                intendedUse: form.intended_use ?? '',
+                receivedCondition: form.received_condition ?? '',
+              },
+            ]
+          : [],
     };
 
-    setDonations((prev) => [normalized, ...prev]);
-    closeModal();
-    */
+    void (async () => {
+      const res = await apiPost<CreateDonationRequestDto, DonorDashboardDonationDto>(
+        '/api/DonorDashboard/CreateDonation',
+        requestBody,
+      );
+
+      if (!res.data) {
+        setFormError(res.error ?? 'Failed to create donation.');
+        return;
+      }
+      const created = res.data;
+
+      setDonations((prev) => [mapDonationDtoToRow(created), ...prev]);
+      closeModal();
+    })();
   }
 
   return (
@@ -525,10 +601,16 @@ export default function DonorDashboardPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-foreground">Channel Source</span>
                 <select
-                  value={form.channel_source}
-                  onChange={(e) => setForm((prev) => ({ ...prev, channel_source: e.target.value as ChannelSource }))}
+                  value={form.channel_source ?? ''}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      channel_source: e.target.value ? (e.target.value as ChannelSource) : null,
+                    }))
+                  }
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background"
                 >
+                  <option value="">None</option>
                   <option>Campaign</option>
                   <option>Event</option>
                   <option>Direct</option>
@@ -537,46 +619,63 @@ export default function DonorDashboardPage() {
                 </select>
               </label>
 
-              <label className="space-y-2">
-                <span className="text-sm font-semibold text-foreground">Currency Code</span>
-                <input
-                  type="text"
-                  value={form.donation_type === 'Monetary' ? 'PHP' : ''}
-                  disabled
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background text-muted-foreground"
-                />
-              </label>
+              {form.donation_type === 'Monetary' && (
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-foreground">Currency Code</span>
+                  <select
+                    value={form.currency_code ?? ''}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        currency_code: e.target.value ? (e.target.value as CurrencyCode) : null,
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-background"
+                  >
+                    <option value="">None</option>
+                    {CURRENCY_OPTIONS.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} ({c.symbol})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
-              <label className="space-y-2">
-                <span className="text-sm font-semibold text-foreground">Amount</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={form.amount ?? ''}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, amount: e.target.value ? Number(e.target.value) : null }))
-                  }
-                  disabled={form.donation_type !== 'Monetary'}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background disabled:text-muted-foreground"
-                />
-              </label>
+              {form.donation_type === 'Monetary' && (
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-foreground">Amount *</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={form.amount ?? ''}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, amount: e.target.value ? Number(e.target.value) : null }))
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-background"
+                  />
+                </label>
+              )}
 
-              <label className="space-y-2">
-                <span className="text-sm font-semibold text-foreground">Estimated Value</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={form.estimated_value ?? ''}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      estimated_value: e.target.value ? Number(e.target.value) : null,
-                    }))
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background"
-                />
-              </label>
+              {form.donation_type !== 'Monetary' && (
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-foreground">Estimated Value *</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={form.estimated_value ?? ''}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        estimated_value: e.target.value ? Number(e.target.value) : null,
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-background"
+                  />
+                </label>
+              )}
 
               {form.donation_type === 'InKind' && (
                 <>
@@ -701,8 +800,9 @@ export default function DonorDashboardPage() {
               )}
 
               <label className="space-y-2">
-                <span className="text-sm font-semibold text-foreground">Impact Unit</span>
+                <span className="text-sm font-semibold text-foreground">Impact Unit *</span>
                 <select
+                  required
                   value={form.impact_unit}
                   onChange={(e) => setForm((prev) => ({ ...prev, impact_unit: e.target.value as ImpactUnit }))}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background"
@@ -715,8 +815,9 @@ export default function DonorDashboardPage() {
               </label>
 
               <label className="space-y-2">
-                <span className="text-sm font-semibold text-foreground">Recurring</span>
+                <span className="text-sm font-semibold text-foreground">Recurring *</span>
                 <select
+                  required
                   value={form.is_recurring ? 'true' : 'false'}
                   onChange={(e) => setForm((prev) => ({ ...prev, is_recurring: e.target.value === 'true' }))}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background"
@@ -737,18 +838,9 @@ export default function DonorDashboardPage() {
               </label>
 
               <label className="space-y-2">
-                <span className="text-sm font-semibold text-foreground">Supporter ID (auto)</span>
-                <input
-                  type="number"
-                  value={form.supporter_id}
-                  disabled
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background text-muted-foreground"
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-sm font-semibold text-foreground">Allocation Area</span>
+                <span className="text-sm font-semibold text-foreground">Allocation Area *</span>
                 <select
+                  required
                   value={form.allocation_area}
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, allocation_area: e.target.value as AllocationArea }))
