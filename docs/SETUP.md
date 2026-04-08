@@ -12,13 +12,25 @@
 
 ### Backend (.NET 10)
 
-```bash
-cd backend
-cp appsettings.example.json appsettings.Development.json  # add your connection strings
-dotnet restore
-dotnet ef database update  # run migrations
-dotnet run                 # starts on https://localhost:5001
+Get the Azure SQL connection string from a teammate (Slack), then create `backend/backend/appsettings.Development.json` (gitignored, never commit):
+
+```json
+{
+  "ConnectionStrings": {
+    "MainAppDbConnection": "<paste conn string here>"
+  }
+}
 ```
+
+Then to run the backend:
+
+```bash
+cd backend/backend
+dotnet restore
+dotnet run                 # starts on http://localhost:5176
+```
+
+CORS is configured to allow `http://localhost:5173` (vite dev) and the Vercel prod URL.
 
 ### Frontend (React/Vite)
 

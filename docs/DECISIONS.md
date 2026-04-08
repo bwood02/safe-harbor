@@ -30,3 +30,46 @@
 **Decision:** Per INTEX requirements -- no choice here. .NET 10 / C# backend, React / TypeScript (Vite) frontend, Azure SQL for relational DB.
 
 **Why:** Required by IS 413 specification. Azure recommended due to student credits and class practice.
+
+---
+
+## 2026-04-07 -- One controller per resource, not one big MainAppController
+
+**Decision:** Each domain gets its own ASP.NET controller in `backend/backend/Controllers/`: `PublicImpact`, `Impact`, `AdminDashboard`, `Supporters`, `Donations`, `Residents`, `ProcessRecordings`. NOT a single `MainAppController` with every route.
+
+**Why:**
+- Standard REST convention (group routes by resource, not by UI page)
+- Lets multiple agents/devs work in parallel without merge conflicts on a single file
+- Easier to apply `[Authorize(Roles="Admin")]` per controller when IS 414 auth lands
+- Smaller files are easier to code-review
+
+**Alternatives considered:** One `MainAppController` (Ethan's initial suggestion). Rejected for the parallelism + auth reasons above.
+
+---
+
+## 2026-04-07 -- Frontend hooks: typed apiGet + per-slice mock fallback
+
+**Decision:** `frontend/src/lib/api.ts` exports a single `apiGet<T>(path)` helper that returns `{ data, error }` and never throws. Each page has its own hook file (`use{Slice}.ts`) that calls `apiGet` and falls back to a local mock object when the call fails. There is no central `useMockData.ts` for new pages — each slice owns its own.
+
+**Why:**
+- Pages always render (even if backend or DB is down) — important for the demo
+- Per-slice hook files = zero merge conflicts when 5 agents work in parallel
+- Mock fallback lives next to the real types so the shape stays in sync
+
+---
+
+## 2026-04-07 -- Admin dashboard windows anchor on most-recent activity, not wall-clock today
+
+**Decision:** `AdminDashboardController.GetAnchorDateAsync()` finds the max of `process_recordings.session_date`, `home_visitations.visit_date`, and `donations.donation_date`, and uses that as the anchor for "recent" windows. The Weekly Activity chart displays 7 weekly buckets (not 7 daily bars).
+
+**Why:** Seed data is historical (2025-2027 scattered) and clusters around specific months. "Last 7 days from today" produced all-zero KPIs and a near-empty bar chart. Anchoring to the most recent date with real activity makes the dashboard look alive without faking data. Weekly buckets amortize the day-level sparseness.
+
+**Trade-off:** When real-time data starts flowing this is still correct because `today` is in the candidate set, so the anchor will move forward naturally.
+
+---
+
+## 2026-04-07 -- Parallel slice agents must use separate git worktrees
+
+**Lesson learned, not yet enforced in tooling:** When 5 Claude Code windows ran the slice agents in parallel, they all shared one working directory. Concurrent `git checkout` calls raced and slice 3's branch ended up with slice 4's files committed to it. Recovered by rebasing slice 3 onto main after slice 4 merged (files were byte-identical so the rebase dropped them automatically), but the close call wasted ~20 min and almost lost work.
+
+**Going forward:** Each parallel agent should run inside its own `git worktree add .claude/worktrees/<slice-name>` directory, not in the shared repo root. The plan doc template and `INSTRUCTIONS.md` have been updated with this rule.

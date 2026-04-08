@@ -4,6 +4,80 @@
 
 ---
 
+## 2026-04-07 evening -- 5 vertical slices wired end-to-end to .NET + Azure SQL (Michael)
+
+**What was done:**
+- Wrote `plans/2026-04-07-five-vertical-slices.md` — full parallel-execution plan with file ownership matrix so 5 agents could work in parallel without conflicts
+- **Phase 0 scaffolding** (commit `0bb80be`): CORS in `Program.cs`, typed `apiGet<T>` helper in `frontend/src/lib/api.ts`, new `PublicHeader` for public routes, expanded `StaffHeader` with Donors + Process Recording links, new `App.tsx` routes with placeholder pages, bumped TypeScript from invalid `~6.0.2` to `5.8.2` so `tsc` works with `erasableSyntaxOnly`
+- **Phase 1 (5 parallel slice agents in separate windows)** — each landed its own feature branch:
+  - Slice 1 / PR #12: Home / Landing — `PublicImpactController` + `usePublicImpact` + `HomePage`
+  - Slice 2 / PR #11: Impact dashboard — `ImpactController` (`/summary`, `/outcomes`) + `useImpact` + page swap from mock to live
+  - Slice 3 / PR #10: Admin command center — `AdminDashboardController` (5 endpoints) + `useAdminDashboard` + filled all 3 TODOs
+  - Slice 4 / PR #9: Donors & Contributions — `SupportersController` + `DonationsController` + `useDonors` + new page (table, filters, KPIs, drawer detail)
+  - Slice 5 / PR #13: Process Recording — `ResidentsController` + `ProcessRecordingsController` + `useProcessRecording` + new page (resident picker, session cards, preview-only New Entry modal)
+- **Slice 3 contamination bug**: parallel agents were sharing one working tree, race-condition-checked out branches, and slice 3's branch ended up with slice 4's 4 files committed alongside its own. Caught it pre-merge by diffing each branch against main. Files were byte-identical to slice 4's, so `git rebase origin/main` after slice 4 merged dropped them automatically. Force-pushed clean slice 3.
+- **PR #14 hotfix** after demo-testing the merged main:
+  - Admin KPIs/charts were showing 0 because windows used "last 7 days from today" but seed data is historical (2025–2027 scattered). Added `GetAnchorDateAsync()` that finds max date across `process_recordings`, `home_visitations`, `donations` and anchors windows to that.
+  - Recent Donations KPI: 30-day window ending at max donation date → $0 → **$4.8k**
+  - Upcoming Reviews KPI: count of open/in-progress plans with scheduled conferences → 0 → **75**
+  - Weekly Activity chart: switched from 7 daily bars (sparse, mostly 0) to **7 weekly buckets** → 3/7 visible bars → **6/7 visible**
+  - Upcoming Reviews list: next 5 open conferences ≥ anchor, fall back to 5 most recent
+  - HomePage: hero subhead was rendering `data.summary` which was stale `public_impact_snapshots.summary_text` reading "average health score 0, average education progress 0%". Replaced with hardcoded clean copy.
+  - `docs/SETUP.md`: switched backend conn-string instructions from `dotnet user-secrets` to `appsettings.Development.json` per Ethan's preference (file is gitignored, conn string lives only on dev machines).
+
+**Files changed:**
+- `plans/2026-04-07-five-vertical-slices.md` (new)
+- `backend/backend/Program.cs` (CORS, conditional HTTPS redirect)
+- `backend/backend/Controllers/{PublicImpact,Impact,AdminDashboard,Supporters,Donations,Residents,ProcessRecordings}Controller.cs` (new)
+- `frontend/src/lib/api.ts` (new)
+- `frontend/src/components/shared/PublicHeader.tsx` (new), `StaffHeader.tsx` (updated nav)
+- `frontend/src/App.tsx` (new routes)
+- `frontend/src/pages/{HomePage,DonorsContributions,ProcessRecording}.tsx` (new)
+- `frontend/src/pages/{ImpactDashboard,AdminDashboard}.tsx` (rewired to live hooks)
+- `frontend/src/hooks/{usePublicImpact,useImpact,useAdminDashboard,useDonors,useProcessRecording}.ts` (new)
+- `frontend/package.json` (typescript 5.8.2)
+- `docs/SETUP.md` (appsettings.Development.json instructions)
+
+**Decisions made:** see `docs/DECISIONS.md` entries from today (controller-per-resource, anchor-on-recent-activity, mock fallback in hooks, parallel-worktree lesson learned).
+
+**Verification:**
+- `dotnet build` and `npm run build` clean
+- Live browser tested both `/admin` (KPIs and weekly chart show real numbers) and `/` (clean hero, no stale 0s) via preview MCP
+- All 12 backend endpoints return 200 with real Azure SQL data
+
+**Next steps:**
+- Add `[Authorize]` attributes once IS 414 auth lands (ASP.NET Identity, password policy)
+- Donors: wire create/edit forms (currently read-only)
+- Process Recording: wire the New Entry modal save (currently preview-only)
+- Cookie consent banner + privacy policy footer (IS 414 grading items)
+- Wire ML pipeline outputs into the app (donor churn, resident wellbeing) once they're ready
+- Tell Ethan + Brandon: parallel agents need separate `git worktree add` directories (one per slice), not one shared worktree — got bitten by it today, see DECISIONS.md
+
+---
+
+## 2026-04-07 12:23 -- pipeline/donor-churn branch: donor churn + resident wellbeing pipelines (Brandon)
+
+**What was done:**
+- Added a new `ml-pipelines/donor_churn_pipeline.ipynb` notebook for the donor churn workstream
+- Added `ml-pipelines/resident_wellbeing_next_month.ipynb` and matching outline notes in `ml-pipelines/outlines/`
+- Replaced the old `girls_wellbeing_predictive.ipynb` notebook with the new branch-specific pipeline notebooks
+- Pushed the branch update to `origin/pipeline/donor-churn`
+
+**Files changed:**
+- `ml-pipelines/donor_churn_pipeline.ipynb`
+- `ml-pipelines/girls_wellbeing_predictive.ipynb` (removed)
+- `ml-pipelines/outlines/donor_churn_pipeline.md`
+- `ml-pipelines/outlines/resident_wellbeing_next_month.md`
+- `ml-pipelines/resident_wellbeing_next_month.ipynb`
+
+**Decisions made:**
+- Split the ML work into separate notebooks per outcome so donor churn and resident wellbeing can evolve independently
+- Kept short outline markdown files beside the notebooks so the problem framing stays easy to review
+
+**Next steps:**
+- Review both notebooks end-to-end and tighten evaluation / interpretation notes where needed
+- Open a PR from `pipeline/donor-churn` to `main` after the branch is ready
+
 ## 2026-04-07 -- Vercel deploy + full UI swap to Replit design (Michael)
 
 **What was done:**

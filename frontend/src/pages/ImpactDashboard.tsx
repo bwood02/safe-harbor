@@ -1,11 +1,18 @@
-import StaffHeader from '@/components/shared/StaffHeader';
+import PublicHeader from '@/components/shared/PublicHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
 import { featuredStory, restorationStories } from '@/data/featuredStory';
-import { useImpactSummary, useOutcomeDistribution } from '@/hooks/useMockData';
+import {
+  useImpactSummary,
+  useOutcomeDistribution,
+  useMonthlyDonationTrend,
+} from '@/hooks/useImpact';
 
 export default function ImpactDashboardPage() {
   const summary = useImpactSummary();
   const outcomesQuery = useOutcomeDistribution();
+  const trendQuery = useMonthlyDonationTrend();
+  const trend = trendQuery.data ?? [];
+  const trendMax = Math.max(1, ...trend.map((t) => t.total));
 
   const statCards = [
     {
@@ -38,7 +45,7 @@ export default function ImpactDashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <StaffHeader />
+      <PublicHeader />
 
       {/* Hero Section */}
       <section
@@ -123,6 +130,56 @@ export default function ImpactDashboardPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Monthly Donation Trend */}
+      <section
+        className="py-10 md:py-14 bg-background border-b border-border/50"
+        aria-labelledby="trend-heading"
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
+          <div className="text-center max-w-3xl mx-auto mb-6 md:mb-8">
+            <h2
+              id="trend-heading"
+              className="font-serif text-foreground mb-3 text-[clamp(1.75rem,3.4vw,2.5rem)]"
+            >
+              Monthly Giving, Last 12 Months
+            </h2>
+            <p className="text-[clamp(0.95rem,1.3vw,1.1rem)] text-muted-foreground">
+              Each bar represents one month of generosity from our donor community.
+            </p>
+          </div>
+
+          {trend.length === 0 ? (
+            <p className="text-center text-muted-foreground">No donation data available.</p>
+          ) : (
+            <div
+              className="flex items-end gap-2 md:gap-3 h-48 md:h-60 px-2"
+              role="img"
+              aria-label="Monthly donation totals bar chart"
+            >
+              {trend.map(({ month, total }) => {
+                const h = Math.max(4, Math.round((total / trendMax) * 100));
+                return (
+                  <div
+                    key={month}
+                    className="flex-1 h-full flex flex-col items-center justify-end gap-2"
+                    title={`${month}: $${total.toLocaleString()}`}
+                  >
+                    <div
+                      className="w-full rounded-t-md bg-primary/80 hover:bg-primary transition-colors"
+                      style={{ height: `${h}%` }}
+                      aria-label={`${month}: $${total.toLocaleString()}`}
+                    />
+                    <span className="text-[10px] md:text-xs text-muted-foreground font-mono">
+                      {month.slice(5)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 

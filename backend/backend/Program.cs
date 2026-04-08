@@ -31,8 +31,12 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+else
+{
+    app.UseHttpsRedirection();
+}
 
-app.UseHttpsRedirection();
+app.UseCors(FrontendCorsPolicy);
 
 // Apply CORS
 app.UseCors("AllowReactApp");
