@@ -1,20 +1,37 @@
 import StaffHeader from '@/components/shared/StaffHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
-import { useAdminKpis, useSafehouses } from '@/hooks/useMockData';
-
-// Bar chart + recent activity not yet wired — empty until we have a data source.
-const barHeights: number[] = [];
-const barDays: string[] = [];
-const recentActivity: { title: string; meta: string; sub: string }[] = [];
+import {
+  useAdminKpis,
+  useAdminSafehouses,
+  useWeeklyActivity,
+  useRecentActivity,
+  useUpcomingReviews,
+} from '@/hooks/useAdminDashboard';
 
 function formatCurrency(n: number): string {
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
   return `$${n.toFixed(0)}`;
 }
 
+function formatRelativeDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffHrs = Math.round(diffMs / (1000 * 60 * 60));
+  if (diffHrs < 1) return 'just now';
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  const diffDays = Math.round(diffHrs / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return d.toLocaleDateString();
+}
+
 export default function AdminDashboardPage() {
   const kpis = useAdminKpis();
-  const safehousesQuery = useSafehouses();
+  const safehousesQuery = useAdminSafehouses();
+  const weeklyQuery = useWeeklyActivity();
+  const recentQuery = useRecentActivity();
+  const upcomingQuery = useUpcomingReviews();
 
   const kpiCards = [
     {
@@ -37,8 +54,12 @@ export default function AdminDashboardPage() {
     },
     {
       label: 'Upcoming Reviews',
-      value: kpis.loading ? '…' : '—', // not wired yet
-      sub: 'This week' as string | null,
+      value: kpis.loading
+        ? '…'
+        : kpis.data
+          ? kpis.data.upcomingReviews.toLocaleString()
+          : '—',
+      sub: 'Next 7 days' as string | null,
     },
     {
       label: 'Avg. Education Progress',
@@ -52,6 +73,11 @@ export default function AdminDashboardPage() {
   ];
 
   const safehouses = safehousesQuery.data ?? [];
+  const weekly = weeklyQuery.data ?? [];
+  const recent = recentQuery.data ?? [];
+  const upcoming = upcomingQuery.data ?? [];
+
+  const maxWeekly = Math.max(1, ...weekly.map((d) => d.total));
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -98,9 +124,9 @@ export default function AdminDashboardPage() {
               <span className="text-sm text-muted-foreground font-medium uppercase tracking-wide">Live Data</span>
             </div>
             <div className="grid sm:grid-cols-2 gap-6">
-              {safehouses.map(({ name, status, occupied, capacity, pct }) => (
+              {safehouses.map(({ safehouseId, name, status, occupied, capacity, pct }) => (
                 <div
-                  key={name}
+                  key={safehouseId}
                   className="rounded-2xl border border-border overflow-hidden bg-background hover:border-primary/30 transition-colors"
                   aria-label={`${name}: ${status}, ${occupied}/${capacity} occupied`}
                 >
@@ -144,50 +170,86 @@ export default function AdminDashboardPage() {
 
           {/* Right Aside */}
           <aside className="space-y-8">
-            {/* Bar chart */}
+            {/* Bar chart — Weekly Activity */}
             <div className="rounded-3xl p-8 bg-foreground text-white shadow-lg relative overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent opacity-50" />
               <h3 className="text-sm font-bold text-white/80 uppercase tracking-widest mb-8 relative z-10">
                 Weekly Activity
               </h3>
               <div className="flex items-end gap-3 h-32 relative z-10" aria-label="Weekly activity bar chart">
-                {barHeights.map((h, i) => (
-                  <div key={barDays[i]} className="flex-1 flex flex-col items-center gap-2 group">
-                    <div
-                      className="w-full bg-primary/80 rounded-t-sm group-hover:bg-primary transition-colors"
-                      style={{ height: `${h}%` }}
-                      aria-label={`${barDays[i]}: ${h}% activity`}
-                    />
-                    <span className="text-[10px] text-white/50 font-medium uppercase tracking-wider">
-                      {i === 0 ? 'Mon' : i === 6 ? 'Sun' : ''}
-                    </span>
-                  </div>
-                ))}
+                {weekly.map((d) => {
+                  const h = Math.round((d.total / maxWeekly) * 100);
+                  return (
+                    <div key={d.date} className="flex-1 flex flex-col items-center gap-2 group">
+                      <div
+                        className="w-full bg-primary/80 rounded-t-sm group-hover:bg-primary transition-colors min-h-[2px]"
+                        style={{ height: `${h}%` }}
+                        aria-label={`${d.day}: ${d.total} events`}
+                        title={`${d.day}: ${d.total} events (${d.processRecordings} recordings, ${d.homeVisitations} visits, ${d.donations} donations)`}
+                      />
+                      <span className="text-[10px] text-white/50 font-medium uppercase tracking-wider">
+                        {d.day.slice(0, 1)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mt-4 relative z-10">
+                Recordings + visits + donations per day
+              </p>
             </div>
 
             {/* Recent Activity */}
             <div className="rounded-3xl border border-border bg-white p-8 shadow-sm">
               <h3 className="text-xl font-serif text-foreground mb-6">Recent Activity</h3>
-              <ul className="space-y-5">
-                {recentActivity.map(({ title, meta, sub }) => (
-                  <li key={title} className="flex gap-4 items-start group">
-                    <div className="mt-1.5 h-2 w-2 rounded-full bg-primary/60 group-hover:bg-primary transition-colors flex-shrink-0" aria-hidden="true" />
-                    <div>
-                      <p className="text-base font-medium text-foreground leading-snug mb-1">{title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {meta} <span className="mx-1 opacity-50">•</span> {sub}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {recent.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No recent activity.</p>
+              ) : (
+                <ul className="space-y-5">
+                  {recent.map((item, i) => (
+                    <li key={`${item.title}-${i}`} className="flex gap-4 items-start group">
+                      <div className="mt-1.5 h-2 w-2 rounded-full bg-primary/60 group-hover:bg-primary transition-colors flex-shrink-0" aria-hidden="true" />
+                      <div>
+                        <p className="text-base font-medium text-foreground leading-snug mb-1">{item.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.meta} <span className="mx-1 opacity-50">•</span> {formatRelativeDate(item.timestamp)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <button
                 className="mt-8 w-full py-3 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-background transition-colors"
                 aria-label="View full audit log"
               >
                 View Full Audit Log
               </button>
+            </div>
+
+            {/* Upcoming Reviews */}
+            <div className="rounded-3xl border border-border bg-white p-8 shadow-sm">
+              <h3 className="text-xl font-serif text-foreground mb-6">Upcoming Reviews</h3>
+              {upcoming.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No case conferences scheduled.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {upcoming.map((r) => (
+                    <li key={r.planId} className="flex justify-between items-start gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{r.residentCode}</p>
+                        <p className="text-xs text-muted-foreground">{r.planCategory}</p>
+                      </div>
+                      <span className="text-xs text-primary font-medium whitespace-nowrap">
+                        {new Date(r.caseConferenceDate).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </aside>
         </div>
