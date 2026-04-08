@@ -73,4 +73,37 @@ export async function apiPost<TRequest, TResponse>(
   }
 }
 
+export async function apiPut<TRequest, TResponse>(
+  path: string,
+  body: TRequest,
+): Promise<ApiResult<TResponse>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'PUT',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      let errorDetail = `HTTP ${res.status} ${res.statusText}`;
+      try {
+        const body = await res.json();
+        if (typeof body === 'string') errorDetail = body;
+        else if (body?.error) errorDetail = String(body.error);
+        else if (body?.detail) errorDetail = String(body.detail);
+      } catch {
+        // ignore parse issues and keep status text fallback
+      }
+      return { data: null, error: errorDetail };
+    }
+    const data = (await res.json()) as TResponse;
+    return { data, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Network error';
+    return { data: null, error: message };
+  }
+}
+
 export { API_BASE_URL };
