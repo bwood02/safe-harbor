@@ -50,26 +50,53 @@ public class AdminDashboardController : ControllerBase
         string PlanCategory,
         DateOnly CaseConferenceDate);
 
+    // Anchor "recent" windows to the most recent date with any activity in the DB,
+    // not wall-clock today. The seed data is historical so this makes the dashboard
+    // render something meaningful even when real-world time has moved past the data.
+    private async Task<DateOnly> GetAnchorDateAsync()
+    {
+        var prMax = await _context.ProcessRecordings.AnyAsync()
+            ? await _context.ProcessRecordings.MaxAsync(p => p.SessionDate)
+            : (DateOnly?)null;
+        var hvMax = await _context.HomeVisitations.AnyAsync()
+            ? await _context.HomeVisitations.MaxAsync(h => h.VisitDate)
+            : (DateOnly?)null;
+        var dnMax = await _context.Donations.Where(d => d.DonationDate != null).AnyAsync()
+            ? await _context.Donations.Where(d => d.DonationDate != null).MaxAsync(d => d.DonationDate!.Value)
+            : (DateOnly?)null;
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var candidates = new[] { prMax, hvMax, dnMax, today }.Where(d => d.HasValue).Select(d => d!.Value).ToList();
+        return candidates.Any() ? candidates.Max() : today;
+    }
+
     [HttpGet("kpis")]
     public async Task<ActionResult<KpisDto>> GetKpis()
     {
         try
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var nextWeek = today.AddDays(7);
-            var sevenDaysAgo = today.AddDays(-7);
+            var anchor = await GetAnchorDateAsync();
 
             var activeResidents = await _context.Residents
                 .CountAsync(r => r.CaseStatus == "Active");
 
-            var recentDonationsAmount = await _context.Donations
-                .Where(d => d.DonationDate != null && d.DonationDate >= sevenDaysAgo)
-                .SumAsync(d => (double?)d.EstimatedValue) ?? 0;
+            // Recent donations: last 30 days ending at the most recent donation date
+            DateOnly? donMax = await _context.Donations.Where(d => d.DonationDate != null).AnyAsync()
+                ? await _context.Donations.Where(d => d.DonationDate != null).MaxAsync(d => d.DonationDate!.Value)
+                : null;
+            double recentDonationsAmount = 0;
+            if (donMax.HasValue)
+            {
+                var donStart = donMax.Value.AddDays(-29);
+                recentDonationsAmount = await _context.Donations
+                    .Where(d => d.DonationDate != null && d.DonationDate >= donStart && d.DonationDate <= donMax)
+                    .SumAsync(d => (double?)d.EstimatedValue) ?? 0;
+            }
 
+            // Upcoming reviews: any open intervention plans with a case conference scheduled
             var upcomingReviews = await _context.InterventionPlans
                 .CountAsync(p => p.CaseConferenceDate != null
-                    && p.CaseConferenceDate >= today
-                    && p.CaseConferenceDate <= nextWeek);
+                    && (p.Status == "Open" || p.Status == "In Progress"));
 
             double avgProgress = 0;
             if (await _context.EducationRecords.AnyAsync())
@@ -120,33 +147,37 @@ public class AdminDashboardController : ControllerBase
     {
         try
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var start = today.AddDays(-6);
+            // 7 weekly buckets ending at the most recent activity date in the DB.
+            // The seed data is too sparse for a day-by-day chart to look alive,
+            // so each bar aggregates one calendar week.
+            var anchor = await GetAnchorDateAsync();
+            var windowStart = anchor.AddDays(-48); // 7 weeks = 49 days
 
             var prList = await _context.ProcessRecordings
-                .Where(p => p.SessionDate >= start && p.SessionDate <= today)
+                .Where(p => p.SessionDate >= windowStart && p.SessionDate <= anchor)
                 .Select(p => p.SessionDate)
                 .ToListAsync();
 
             var hvList = await _context.HomeVisitations
-                .Where(h => h.VisitDate >= start && h.VisitDate <= today)
+                .Where(h => h.VisitDate >= windowStart && h.VisitDate <= anchor)
                 .Select(h => h.VisitDate)
                 .ToListAsync();
 
             var donList = await _context.Donations
-                .Where(d => d.DonationDate != null && d.DonationDate >= start && d.DonationDate <= today)
+                .Where(d => d.DonationDate != null && d.DonationDate >= windowStart && d.DonationDate <= anchor)
                 .Select(d => d.DonationDate!.Value)
                 .ToListAsync();
 
             var result = new List<WeeklyActivityDto>();
             for (int i = 0; i < 7; i++)
             {
-                var date = start.AddDays(i);
-                var pr = prList.Count(d => d == date);
-                var hv = hvList.Count(d => d == date);
-                var dn = donList.Count(d => d == date);
-                var dayName = date.ToDateTime(TimeOnly.MinValue).ToString("ddd");
-                result.Add(new WeeklyActivityDto(dayName, date.ToString("yyyy-MM-dd"), pr, hv, dn, pr + hv + dn));
+                var bucketStart = windowStart.AddDays(i * 7);
+                var bucketEnd = bucketStart.AddDays(6);
+                var pr = prList.Count(d => d >= bucketStart && d <= bucketEnd);
+                var hv = hvList.Count(d => d >= bucketStart && d <= bucketEnd);
+                var dn = donList.Count(d => d >= bucketStart && d <= bucketEnd);
+                var label = $"W{i + 1}";
+                result.Add(new WeeklyActivityDto(label, bucketStart.ToString("yyyy-MM-dd"), pr, hv, dn, pr + hv + dn));
             }
             return Ok(result);
         }
@@ -213,9 +244,13 @@ public class AdminDashboardController : ControllerBase
     {
         try
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var anchor = await GetAnchorDateAsync();
+            // Next 5 open/in-progress case conferences on or after anchor, then
+            // fall back to the 5 most recent ones if nothing is in the future.
             var rows = await _context.InterventionPlans
-                .Where(p => p.CaseConferenceDate != null && p.CaseConferenceDate >= today)
+                .Where(p => p.CaseConferenceDate != null
+                    && (p.Status == "Open" || p.Status == "In Progress")
+                    && p.CaseConferenceDate >= anchor)
                 .OrderBy(p => p.CaseConferenceDate)
                 .Take(5)
                 .Select(p => new UpcomingReviewDto(
@@ -225,6 +260,23 @@ public class AdminDashboardController : ControllerBase
                     p.PlanCategory,
                     p.CaseConferenceDate!.Value))
                 .ToListAsync();
+
+            if (rows.Count == 0)
+            {
+                rows = await _context.InterventionPlans
+                    .Where(p => p.CaseConferenceDate != null
+                        && (p.Status == "Open" || p.Status == "In Progress"))
+                    .OrderByDescending(p => p.CaseConferenceDate)
+                    .Take(5)
+                    .Select(p => new UpcomingReviewDto(
+                        p.PlanId,
+                        p.ResidentId,
+                        p.Resident.CaseControlNo,
+                        p.PlanCategory,
+                        p.CaseConferenceDate!.Value))
+                    .ToListAsync();
+            }
+
             return Ok(rows);
         }
         catch (Exception ex)

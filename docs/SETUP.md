@@ -12,12 +12,14 @@
 
 ### Backend (.NET 10)
 
-The Azure SQL connection string is stored in `dotnet user-secrets` (NOT committed). Get the connection string from a teammate, then run once per machine:
+Get the Azure SQL connection string from a teammate (Slack), then create `backend/backend/appsettings.Development.json` (gitignored, never commit):
 
-```bash
-cd backend/backend
-dotnet user-secrets init
-dotnet user-secrets set "ConnectionStrings:MainAppDbConnection" "<azure sql conn string>"
+```json
+{
+  "ConnectionStrings": {
+    "MainAppDbConnection": "<paste conn string here>"
+  }
+}
 ```
 
 Then to run the backend:

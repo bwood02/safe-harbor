@@ -19,11 +19,11 @@ export default function HomePage() {
       <main className="flex-1">
         <section className="max-w-6xl w-full mx-auto px-6 pt-20 pb-16 text-center">
           <h1 className="text-5xl md:text-6xl font-serif text-foreground leading-tight mb-6">
-            {data.headline ?? 'Every girl deserves a safe harbor'}
+            Every girl deserves a safe harbor
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-10">
-            {data.summary ??
-              'Restoring dignity, healing trauma, and building futures for survivors of exploitation.'}
+            Restoring dignity, healing trauma, and building futures for
+            survivors of trafficking and exploitation in the Philippines.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4">
