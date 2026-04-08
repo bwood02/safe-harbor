@@ -66,7 +66,12 @@ public class AdminDashboardController : ControllerBase
             : (DateOnly?)null;
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var candidates = new[] { prMax, hvMax, dnMax, today }.Where(d => d.HasValue).Select(d => d!.Value).ToList();
+        // Clamp to today so future-dated seed data doesn't anchor charts to the future.
+        var candidates = new[] { prMax, hvMax, dnMax }
+            .Where(d => d.HasValue)
+            .Select(d => d!.Value)
+            .Where(d => d <= today)
+            .ToList();
         return candidates.Any() ? candidates.Max() : today;
     }
 

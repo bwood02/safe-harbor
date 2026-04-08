@@ -180,7 +180,7 @@ export default function AdminDashboardPage() {
                 {weekly.map((d) => {
                   const h = Math.round((d.total / maxWeekly) * 100);
                   return (
-                    <div key={d.date} className="flex-1 flex flex-col items-center gap-2 group">
+                    <div key={d.date} className="flex-1 h-full flex flex-col items-center justify-end gap-2 group">
                       <div
                         className="w-full bg-primary/80 rounded-t-sm group-hover:bg-primary transition-colors min-h-[2px]"
                         style={{ height: `${h}%` }}
@@ -188,7 +188,7 @@ export default function AdminDashboardPage() {
                         title={`${d.day}: ${d.total} events (${d.processRecordings} recordings, ${d.homeVisitations} visits, ${d.donations} donations)`}
                       />
                       <span className="text-[10px] text-white/50 font-medium uppercase tracking-wider">
-                        {d.day.slice(0, 1)}
+                        {d.day}
                       </span>
                     </div>
                   );

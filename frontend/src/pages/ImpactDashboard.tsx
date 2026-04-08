@@ -164,7 +164,7 @@ export default function ImpactDashboardPage() {
                 return (
                   <div
                     key={month}
-                    className="flex-1 flex flex-col items-center justify-end gap-2"
+                    className="flex-1 h-full flex flex-col items-center justify-end gap-2"
                     title={`${month}: $${total.toLocaleString()}`}
                   >
                     <div
