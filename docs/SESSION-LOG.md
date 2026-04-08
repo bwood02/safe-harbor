@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-04-07 12:23 -- pipeline/donor-churn branch: donor churn + resident wellbeing pipelines (Brandon)
+
+**What was done:**
+- Added a new `ml-pipelines/donor_churn_pipeline.ipynb` notebook for the donor churn workstream
+- Added `ml-pipelines/resident_wellbeing_next_month.ipynb` and matching outline notes in `ml-pipelines/outlines/`
+- Replaced the old `girls_wellbeing_predictive.ipynb` notebook with the new branch-specific pipeline notebooks
+- Pushed the branch update to `origin/pipeline/donor-churn`
+
+**Files changed:**
+- `ml-pipelines/donor_churn_pipeline.ipynb`
+- `ml-pipelines/girls_wellbeing_predictive.ipynb` (removed)
+- `ml-pipelines/outlines/donor_churn_pipeline.md`
+- `ml-pipelines/outlines/resident_wellbeing_next_month.md`
+- `ml-pipelines/resident_wellbeing_next_month.ipynb`
+
+**Decisions made:**
+- Split the ML work into separate notebooks per outcome so donor churn and resident wellbeing can evolve independently
+- Kept short outline markdown files beside the notebooks so the problem framing stays easy to review
+
+**Next steps:**
+- Review both notebooks end-to-end and tighten evaluation / interpretation notes where needed
+- Open a PR from `pipeline/donor-churn` to `main` after the branch is ready
+
 ## 2026-04-07 -- Vercel deploy + full UI swap to Replit design (Michael)
 
 **What was done:**
