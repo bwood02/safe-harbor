@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Filter, Repeat, HandCoins, X } from 'lucide-react';
 import StaffHeader from '@/components/shared/StaffHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
+import { getDonationsBySupporterId } from '@/api/donorDashboard';
+import type { DonorDashboardDonationDto } from '@/types/donorDashboard';
 
 type DonationType = 'Monetary' | 'InKind' | 'Time' | 'Skills' | 'SocialMedia';
 type ChannelSource = 'Campaign' | 'Event' | 'Direct' | 'SocialMedia' | 'PartnerReferral';
@@ -51,141 +53,7 @@ const ALLOCATION_AREAS: AllocationArea[] = [
 ];
 
 const MOCK_SUPPORTER_ID = 1001;
-
-const INITIAL_DONATIONS: DonationRow[] = [
-  {
-    donation_id: 51001,
-    supporter_id: MOCK_SUPPORTER_ID,
-    donation_type: 'Monetary',
-    donation_date: '2026-03-14',
-    channel_source: 'Campaign',
-    currency_code: 'PHP',
-    amount: 3500,
-    estimated_value: 3500,
-    impact_unit: 'pesos',
-    is_recurring: true,
-    campaign_name: 'Year-End Hope',
-    notes: 'Please prioritize school supplies.',
-    allocation_area: 'Education',
-    item_name: null,
-    item_category: null,
-    quantity: null,
-    unit_of_measure: null,
-    estimated_unit_value: null,
-    intended_use: null,
-    received_condition: null,
-  },
-  {
-    donation_id: 51014,
-    supporter_id: MOCK_SUPPORTER_ID,
-    donation_type: 'InKind',
-    donation_date: '2026-02-26',
-    channel_source: 'Event',
-    currency_code: null,
-    amount: null,
-    estimated_value: 1200,
-    impact_unit: 'items',
-    is_recurring: false,
-    campaign_name: null,
-    notes: null,
-    allocation_area: 'Wellbeing',
-    item_name: 'School kits',
-    item_category: 'SchoolMaterials',
-    quantity: 40,
-    unit_of_measure: 'sets',
-    estimated_unit_value: 30,
-    intended_use: 'Education',
-    received_condition: 'New',
-  },
-  {
-    donation_id: 51033,
-    supporter_id: MOCK_SUPPORTER_ID,
-    donation_type: 'Time',
-    donation_date: '2026-02-09',
-    channel_source: 'Direct',
-    currency_code: null,
-    amount: null,
-    estimated_value: 8,
-    impact_unit: 'hours',
-    is_recurring: false,
-    campaign_name: null,
-    notes: 'Weekend mentoring session.',
-    allocation_area: 'Outreach',
-    item_name: null,
-    item_category: null,
-    quantity: null,
-    unit_of_measure: null,
-    estimated_unit_value: null,
-    intended_use: null,
-    received_condition: null,
-  },
-  {
-    donation_id: 51045,
-    supporter_id: MOCK_SUPPORTER_ID,
-    donation_type: 'Monetary',
-    donation_date: '2026-01-31',
-    channel_source: 'PartnerReferral',
-    currency_code: 'PHP',
-    amount: 2200,
-    estimated_value: 2200,
-    impact_unit: 'pesos',
-    is_recurring: true,
-    campaign_name: 'Back to School',
-    notes: null,
-    allocation_area: 'Operations',
-    item_name: null,
-    item_category: null,
-    quantity: null,
-    unit_of_measure: null,
-    estimated_unit_value: null,
-    intended_use: null,
-    received_condition: null,
-  },
-  {
-    donation_id: 51062,
-    supporter_id: MOCK_SUPPORTER_ID,
-    donation_type: 'Skills',
-    donation_date: '2026-01-18',
-    channel_source: 'Direct',
-    currency_code: null,
-    amount: null,
-    estimated_value: 6,
-    impact_unit: 'hours',
-    is_recurring: false,
-    campaign_name: null,
-    notes: 'Delivered skills workshop for caregivers.',
-    allocation_area: 'Maintenance',
-    item_name: null,
-    item_category: null,
-    quantity: null,
-    unit_of_measure: null,
-    estimated_unit_value: null,
-    intended_use: null,
-    received_condition: null,
-  },
-  {
-    donation_id: 51070,
-    supporter_id: MOCK_SUPPORTER_ID,
-    donation_type: 'Monetary',
-    donation_date: '2026-01-05',
-    channel_source: 'Campaign',
-    currency_code: 'PHP',
-    amount: 1750,
-    estimated_value: 1750,
-    impact_unit: 'pesos',
-    is_recurring: false,
-    campaign_name: 'GivingTuesday',
-    notes: 'Use where most needed this month.',
-    allocation_area: 'Transport',
-    item_name: null,
-    item_category: null,
-    quantity: null,
-    unit_of_measure: null,
-    estimated_unit_value: null,
-    intended_use: null,
-    received_condition: null,
-  },
-];
+const DONOR_SUPPORTER_ID = 25;
 
 function formatAmount(donation: DonationRow): string {
   if (donation.currency_code && donation.amount != null) {
@@ -226,7 +94,9 @@ function emptyDonationForm(): DonationRow {
 }
 
 export default function DonorDashboardPage() {
-  const [donations, setDonations] = useState<DonationRow[]>(INITIAL_DONATIONS);
+  const [donations, setDonations] = useState<DonationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | DonationType>('All');
   const [recurringFilter, setRecurringFilter] = useState<'All' | 'Recurring' | 'One-time'>('All');
@@ -235,6 +105,60 @@ export default function DonorDashboardPage() {
   const [selectedDonation, setSelectedDonation] = useState<DonationRow | null>(null);
   const [form, setForm] = useState<DonationRow>(emptyDonationForm());
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDonations() {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const data = await getDonationsBySupporterId(DONOR_SUPPORTER_ID);
+        if (cancelled) return;
+
+        const rows: DonationRow[] = data.map((d: DonorDashboardDonationDto) => {
+          const firstAllocation = d.donationAllocations[0]?.programArea as AllocationArea | undefined;
+          const firstItem = d.inKindDonationItems[0];
+          return {
+            donation_id: d.donationId,
+            supporter_id: d.supporterId,
+            donation_type: d.donationType as DonationType,
+            donation_date: d.donationDate ?? '',
+            channel_source: (d.channelSource as ChannelSource) ?? 'Direct',
+            currency_code: d.currencyCode,
+            amount: d.amount,
+            estimated_value: d.estimatedValue,
+            impact_unit: d.impactUnit as ImpactUnit,
+            is_recurring: d.isRecurring,
+            campaign_name: d.campaignName,
+            notes: d.notes,
+            allocation_area: firstAllocation && ALLOCATION_AREAS.includes(firstAllocation)
+              ? firstAllocation
+              : 'Operations',
+            item_name: firstItem?.itemName ?? null,
+            item_category: (firstItem?.itemCategory as ItemCategory) ?? null,
+            quantity: firstItem?.quantity ?? null,
+            unit_of_measure: (firstItem?.unitOfMeasure as UnitOfMeasure) ?? null,
+            estimated_unit_value: firstItem?.estimatedUnitValue ?? null,
+            intended_use: (firstItem?.intendedUse as IntendedUse) ?? null,
+            received_condition: (firstItem?.receivedCondition as ReceivedCondition) ?? null,
+          };
+        });
+
+        setDonations(rows);
+      } catch (err) {
+        if (cancelled) return;
+        setLoadError((err as Error).message || 'Failed to load donor donations.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadDonations();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredDonations = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -275,6 +199,11 @@ export default function DonorDashboardPage() {
 
   function submitNewDonation(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setFormError('Submitting new donations is not wired yet.');
+    return;
+
+    // TODO: wire POST once auto-generated key strategy is finalized.
+    /*
     if (!form.supporter_id || form.supporter_id <= 0) {
       setFormError('Supporter ID is required.');
       return;
@@ -325,6 +254,7 @@ export default function DonorDashboardPage() {
 
     setDonations((prev) => [normalized, ...prev]);
     closeModal();
+    */
   }
 
   return (
@@ -350,6 +280,12 @@ export default function DonorDashboardPage() {
             New Donation
           </button>
         </div>
+
+        {loadError && (
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 mb-6">
+            <p className="text-sm font-medium text-destructive">{loadError}</p>
+          </div>
+        )}
 
         <section className="rounded-2xl border border-border bg-white shadow-sm p-5 md:p-6 mb-8">
           <h2 className="text-xl font-serif text-foreground mb-4">Allocation Snapshot</h2>
@@ -454,6 +390,20 @@ export default function DonorDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
+                {loading && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                      Loading donations...
+                    </td>
+                  </tr>
+                )}
+                {!loading && filteredDonations.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                      No donations found for this donor.
+                    </td>
+                  </tr>
+                )}
                 {filteredDonations.map((donation) => (
                   <tr
                     key={donation.donation_id}

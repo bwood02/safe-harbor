@@ -24,7 +24,7 @@ dotnet run                 # starts on https://localhost:5001
 
 ```bash
 cd frontend
-cp .env.example .env.local  # set VITE_API_URL
+cp .env.example .env.local  # set VITE_API_BASE_URL
 npm install
 npm run dev                 # starts on http://localhost:5173
 ```
@@ -58,9 +58,7 @@ jupyter notebook
 ### Frontend (`.env.local` -- DO NOT COMMIT)
 
 ```
-VITE_SUPABASE_URL=https://hfixzmwuqlrudcsslypz.supabase.co
-VITE_SUPABASE_ANON_KEY=<get from Supabase dashboard → Settings → API>
-VITE_API_URL=https://localhost:5001/api
+VITE_API_BASE_URL=https://localhost:5001/api
 ```
 
 ## Azure Deployment
@@ -86,49 +84,53 @@ npm run build
 # Deploy dist/ folder to Azure Static Web Apps or App Service
 ```
 
-## Database (Supabase / Postgres)
+## Database (Azure SQL)
 
-The operational database is hosted on Supabase. All 17 tables are already created
-and seeded with the CSV data from `data/`.
+The operational database is Azure SQL Database. The schema source of truth is:
 
-- **Project ref:** `hfixzmwuqlrudcsslypz`
-- **Project URL:** `https://hfixzmwuqlrudcsslypz.supabase.co`
-- **Dashboard:** https://supabase.com/dashboard/project/hfixzmwuqlrudcsslypz
-- **Schema source of truth:** `docs/schema.sql`
-- **Row counts:** ~8,093 rows across 17 tables (see `docs/SESSION-LOG.md`)
+- `docs/schema.sql`
+
+Notes:
+- The schema uses explicit integer primary keys (no `IDENTITY`).
+- `backend/backend/Models/MainAppDbContext.cs` and entity models in `backend/backend/Models/` should stay aligned with `docs/schema.sql`.
 
 ### How teammates connect
 
-1. Get added to the Supabase org by Michael (request in Slack)
-2. Open the project dashboard → **Settings → API** → copy:
-   - Project URL → `VITE_SUPABASE_URL`
-   - `anon` `public` key → `VITE_SUPABASE_ANON_KEY`
-3. Create `frontend/.env.local` (see `frontend/.env.example`) and paste those two values
-4. `cd frontend && npm install && npm run dev`
-5. The DB password and personal access token are NOT needed for normal frontend dev — only for schema migrations or bulk loads
+1. Get the Azure SQL server/database names and credentials from team secret storage.
+2. Set backend connection strings in `appsettings.Development.json`:
+   - `ConnectionStrings:DefaultConnection` (operational DB)
+   - `ConnectionStrings:IdentityConnection` (identity DB)
+3. Run backend locally:
+   - `cd backend`
+   - `dotnet restore`
+   - `dotnet run`
+4. Set `frontend/.env.local` with `VITE_API_BASE_URL` pointing to local backend API.
 
 ### Sensitive credentials (NOT in repo)
 
-These live in 1Password / team Slack DM only:
+These belong in Azure App Service Configuration / Key Vault (or local secret storage for dev):
 
-| Name | Used by | Where to get |
-|------|---------|--------------|
-| `SUPABASE_DB_PASSWORD` | Direct DB connection, migrations | Slack DM from Michael |
-| `SUPABASE_ACCESS_TOKEN` | Supabase CLI (`supabase link`) | https://supabase.com/dashboard/account/tokens |
-| `SUPABASE_ANON_KEY` | Frontend client (public, but not in repo) | Project Settings → API |
+| Name | Used by |
+|------|---------|
+| `DefaultConnection` | Main operational Azure SQL connection string |
+| `IdentityConnection` | Identity Azure SQL connection string |
+| `Jwt:Key` | JWT signing key |
 
-### Re-running the schema
+### Applying or re-applying schema
+
+Use Azure SQL tooling (`sqlcmd`, Azure Data Studio, SSMS, or migration workflow) to execute:
+
+- `docs/schema.sql`
+
+Example with `sqlcmd`:
 
 ```bash
-export SUPABASE_ACCESS_TOKEN=<your-pat>
-npx supabase link --project-ref hfixzmwuqlrudcsslypz
-npx supabase db query --linked -f docs/schema.sql
+sqlcmd -S <server>.database.windows.net -d <database> -U <username> -P <password> -i docs/schema.sql
 ```
 
 ### Identity DB
 
-Identity DB is separate from operational DB (per IS 414 spec). TBD — likely a
-second Supabase project or a separate schema in this one.
+Identity database is separate from operational data (per IS 414 spec), hosted on Azure SQL.
 
 ## Grading Accounts
 
