@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, Filter, Repeat, HandCoins, X } from 'lucide-react';
 import StaffHeader from '@/components/shared/StaffHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
-import { getDonationsBySupporterId } from '@/api/donorDashboard';
-import type { DonorDashboardDonationDto } from '@/types/donorDashboard';
+import { apiGet } from '@/lib/api';
+import type { DonorDashboardDonationDto, GetDonationsResponseDto } from '@/types/donorDashboard';
 
 type DonationType = 'Monetary' | 'InKind' | 'Time' | 'Skills' | 'SocialMedia';
 type ChannelSource = 'Campaign' | 'Event' | 'Direct' | 'SocialMedia' | 'PartnerReferral';
@@ -113,8 +113,16 @@ export default function DonorDashboardPage() {
       setLoading(true);
       setLoadError(null);
       try {
-        const data = await getDonationsBySupporterId(DONOR_SUPPORTER_ID);
+        const response = await apiGet<GetDonationsResponseDto>(
+          `/api/DonorDashboard/GetDonations?supporter_id=${DONOR_SUPPORTER_ID}`,
+        );
         if (cancelled) return;
+        if (!response.data) {
+          setDonations([]);
+          setLoadError(response.error ?? 'Failed to load donor donations.');
+          return;
+        }
+        const data = response.data;
 
         const rows: DonationRow[] = data.map((d: DonorDashboardDonationDto) => {
           const firstAllocation = d.donationAllocations[0]?.programArea as AllocationArea | undefined;
