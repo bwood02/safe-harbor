@@ -12,13 +12,23 @@
 
 ### Backend (.NET 10)
 
+The Azure SQL connection string is stored in `dotnet user-secrets` (NOT committed). Get the connection string from a teammate, then run once per machine:
+
 ```bash
-cd backend
-cp appsettings.example.json appsettings.Development.json  # add your connection strings
-dotnet restore
-dotnet ef database update  # run migrations
-dotnet run                 # starts on https://localhost:5001
+cd backend/backend
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:MainAppDbConnection" "<azure sql conn string>"
 ```
+
+Then to run the backend:
+
+```bash
+cd backend/backend
+dotnet restore
+dotnet run                 # starts on http://localhost:5176
+```
+
+CORS is configured to allow `http://localhost:5173` (vite dev) and the Vercel prod URL.
 
 ### Frontend (React/Vite)
 

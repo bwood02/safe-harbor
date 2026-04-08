@@ -1,24 +1,22 @@
 import { Link, useLocation } from 'wouter';
 
 const navLinks = [
-  { to: '/admin', label: 'Admin' },
-  { to: '/caseload', label: 'Caseload' },
-  { to: '/donors', label: 'Donors' },
-  { to: '/process-recordings', label: 'Process Recording' },
+  { to: '/', label: 'Home' },
+  { to: '/impact', label: 'Impact' },
 ];
 
-export default function StaffHeader() {
+export default function PublicHeader() {
   const [location] = useLocation();
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/60">
       <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-        <Link href="/admin">
+        <Link href="/">
           <span className="font-serif italic font-medium text-foreground text-2xl tracking-wide cursor-pointer select-none">
             Safe Harbor
           </span>
         </Link>
-        <nav aria-label="Main navigation">
+        <nav aria-label="Public navigation">
           <ul className="flex items-center gap-6">
             {navLinks.map(({ to, label }) => {
               const isActive = location === to;
@@ -43,6 +41,13 @@ export default function StaffHeader() {
                 </li>
               );
             })}
+            <li>
+              <Link href="/admin">
+                <span className="text-base font-medium px-4 py-2 rounded-full border border-foreground/20 text-foreground hover:bg-foreground/5 transition-colors cursor-pointer">
+                  Staff Login
+                </span>
+              </Link>
+            </li>
           </ul>
         </nav>
       </div>
