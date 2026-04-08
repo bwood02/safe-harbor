@@ -163,6 +163,7 @@ public class DonorDashboard : ControllerBase
             _context.Donations.Add(donation);
             await _context.SaveChangesAsync();
 
+            // Donor submissions may omit allocations; staff add donation_allocations rows later.
             if (request.DonationAllocations.Count > 0)
             {
                 foreach (var a in request.DonationAllocations)

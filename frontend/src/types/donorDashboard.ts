@@ -83,3 +83,6 @@ export interface CreateDonationRequestDto {
   inKindDonationItems: CreateInKindDonationItemRequestDto[];
 }
 
+/** Same payload shape as create; used with PUT /api/Donations/{id}. */
+export type UpdateDonationRequestDto = CreateDonationRequestDto;
+

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using CurrencyToPhp = global::backend.CurrencyToPhp;
 
 namespace backend.Controllers;
 
@@ -116,11 +117,43 @@ public class SupportersController : ControllerBase
 
         var total = await q.CountAsync();
 
-        var items = await q
+        var supporterScalars = await q
             .OrderBy(s => s.DisplayName)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(s => new SupporterListItem
+            .Select(s => new
+            {
+                s.SupporterId,
+                s.DisplayName,
+                s.SupporterType,
+                s.RelationshipType,
+                s.Region,
+                s.Country,
+                s.Email,
+                s.Status,
+                s.FirstDonationDate,
+            })
+            .ToListAsync();
+
+        var pageIds = supporterScalars.Select(s => s.SupporterId).ToList();
+        var donationRows = await _context.Donations
+            .AsNoTracking()
+            .Where(d => pageIds.Contains(d.SupporterId))
+            .Select(d => new { d.SupporterId, d.EstimatedValue, d.CurrencyCode })
+            .ToListAsync();
+
+        var statsBySupporter = donationRows
+            .GroupBy(d => d.SupporterId)
+            .ToDictionary(
+                g => g.Key,
+                g => (
+                    Count: g.Count(),
+                    TotalPhp: g.Sum(d => CurrencyToPhp.Convert(d.EstimatedValue, d.CurrencyCode))));
+
+        var items = supporterScalars.Select(s =>
+        {
+            var hasStats = statsBySupporter.TryGetValue(s.SupporterId, out var st);
+            return new SupporterListItem
             {
                 SupporterId = s.SupporterId,
                 DisplayName = s.DisplayName,
@@ -131,10 +164,10 @@ public class SupportersController : ControllerBase
                 Email = s.Email,
                 Status = s.Status,
                 FirstDonationDate = s.FirstDonationDate,
-                TotalGiven = s.Donations.Sum(d => (double?)d.EstimatedValue) ?? 0,
-                DonationCount = s.Donations.Count(),
-            })
-            .ToListAsync();
+                TotalGiven = hasStats ? st.TotalPhp : 0,
+                DonationCount = hasStats ? st.Count : 0,
+            };
+        }).ToList();
 
         return Ok(new PagedResult<SupporterListItem>
         {
