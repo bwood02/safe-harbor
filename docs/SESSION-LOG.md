@@ -4,6 +4,31 @@
 
 ---
 
+## 2026-04-08 -- Slice 3: Admin Dashboard wired to backend (Michael)
+
+**What was done:**
+- Built slice 3 from `plans/2026-04-07-five-vertical-slices.md` on branch `feature/slice-3-admin`
+- New `AdminDashboardController` with 5 endpoints: `kpis`, `safehouses`, `weekly-activity`, `recent-activity`, `upcoming-reviews` — each wraps DB calls in try/catch returning 503 on failure
+- New `useAdminDashboard.ts` hook file with typed hooks + mock fallbacks via a shared `useApiWithFallback` helper (fetches from API, falls back to local mock on any error)
+- `AdminDashboard.tsx` swapped from `useMockData` to new hooks. Upcoming Reviews KPI no longer `—`, weekly bar chart has real bars scaled to max, recent activity feed renders items, new Upcoming Reviews card added to aside
+- `dotnet build` passes; PR #10 opened against `main`
+
+**Files changed:**
+- `backend/backend/Controllers/AdminDashboardController.cs` (new)
+- `frontend/src/hooks/useAdminDashboard.ts` (new)
+- `frontend/src/pages/AdminDashboard.tsx` (modified)
+
+**Decisions made:**
+- Weekly activity combines `process_recordings + home_visitations + donations` counts per day (plan spec)
+- Recent activity endpoint merges donations/recordings/visits and returns top 8 by timestamp
+- Shared `useApiWithFallback` helper lives inside the hook file (slice-self-contained per plan)
+
+**Next steps:**
+- PR MCHammer-12/safe-harbor#10 awaiting review/merge
+- Other slices (1, 2, 4, 5) in parallel on their own branches
+
+---
+
 ## 2026-04-07 evening -- 5 vertical slices wired end-to-end to .NET + Azure SQL (Michael)
 
 **What was done:**
