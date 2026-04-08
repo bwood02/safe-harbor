@@ -10,7 +10,7 @@ export async function getDonationsBySupporterId(
   }
 
   const response = await fetch(
-    `${API_BASE_URL}/DonorDashboard/GetDonations?supporter_id=${supporterId}`,
+    `${API_BASE_URL}/api/DonorDashboard/GetDonations?supporter_id=${supporterId}`,
   );
 
   if (!response.ok) {
