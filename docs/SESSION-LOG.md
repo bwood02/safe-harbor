@@ -4,6 +4,55 @@
 
 ---
 
+## 2026-04-09 -- Mobile-responsive nav, polish, logo, grouped header (Michael)
+
+**What was done:**
+- **PR #38 (merged)** -- mobile-responsive sweep
+  - `AppHeader`: rewrote with desktop nav (≥`lg`) + burger menu below `lg`. Closes on route change, outside click, Escape.
+  - `ImpactDashboard` + `HomePage`: dropped `min-h-[calc(100svh-72px)]` full-viewport sections that wasted space, replaced with natural `py-12/16/20`. Removed "Placeholder survivor stories" copy and meaningless Scroll/Stories chips.
+  - All admin pages (Caseload, Donors, DonorDashboard, Reports, VisitationLogs, ProcessRecording, AdminDashboard, SocialMediaDashboard, MlIntegrationPage): added `overflow-x-hidden` to root, switched `px-6` to `px-4 sm:px-6`, reduced mobile vertical padding so wide tables can't break the page into horizontal body scroll. Tables themselves still scroll within their cards.
+  - `MlIntegrationPage`: removed stale `StaffHeader` import causing double header.
+  - Fix on top: safehouse cards on `/admin` had title overlapping ACTIVE badge -- changed to `flex-wrap` with `min-w-0 flex-1` on title, stats grid stacks 1-col on mobile.
+- **PR #39 (merged)** -- lighthouse logo + favicon
+  - New `LogoMark.tsx` line-art lighthouse component (dome, tower with diagonal stripes, lantern room + roof, wave) using `currentColor` so parent `text-primary` colors it
+  - `AppHeader`: logo sits beside the wordmark
+  - Standalone `public/safe-harbor-icon.svg` for favicon (hard-coded amber stroke)
+  - `index.html`: favicon link + dropped "— Wireframes" from tab title
+- **PR #40 (merged)** -- grouped nav + contact page + footer fixes
+  - Collapsed 9-item admin nav to 6 top-level entries via 2 dropdowns: `Home / Impact / Dashboard / Case Management ▾ / Fundraising ▾ / Logout`
+    - Case Management = Caseload, Process Recordings, Visitation Logs
+    - Fundraising = Donor Contributions, Social Media, Reports
+  - Desktop = click-to-open dropdown panel; mobile = accordion inside burger
+  - New `/contact` page with email/phone/office/urgent-concerns/partner panels
+  - HomePage "What we do" eyebrow renamed to "Our Mission", added `id="mission"` so `/#mission` works
+  - Footer: Our Mission → `/#mission` (anchor), Contact → `/contact`, Privacy already correct
+- **Audit (logged in as admin@admin.com at 375w)**: all 7 admin pages and public pages -- no horizontal page overflow anywhere, every table scrolls cleanly inside its card, dropdowns + accordion both verified
+
+**Files changed:**
+- `frontend/src/components/shared/AppHeader.tsx` (rewritten -- burger + grouped nav)
+- `frontend/src/components/shared/LogoMark.tsx` (new)
+- `frontend/src/components/shared/PublicFooter.tsx` (Contact + Mission links)
+- `frontend/src/pages/ContactPage.tsx` (new)
+- `frontend/src/pages/HomePage.tsx`, `ImpactDashboard.tsx`, `AdminDashboard.tsx`, `CaseloadInventory.tsx`, `DonorsContributions.tsx`, `DonorDashboard.tsx`, `ReportsAnalytics.tsx`, `ProcessRecording.tsx`, `VisitationLogs.tsx`, `SocialMediaDashboard.tsx`, `MlIntegrationPage.tsx`
+- `frontend/index.html` (favicon, title)
+- `frontend/public/safe-harbor-icon.svg` (new)
+- `frontend/src/App.tsx` (`/contact` route)
+
+**Decisions made:**
+- 6-item nav cap with 2 dropdowns (Case Management, Fundraising) instead of mega-menu or shrinking text. Reasoning lives in the recommendation grid that PM signed off on.
+- Use `<a href="/#mission">` (plain anchor) for footer Mission link instead of `Link` -- react-router v6 doesn't auto-scroll to hash, plain anchor is the cheapest reliable option.
+- `LogoMark` uses `currentColor` so it can be reused anywhere without re-defining color; standalone favicon SVG hard-codes the amber since `<link rel="icon">` can't inherit.
+- All admin pages got `overflow-x-hidden` on root as defense-in-depth -- even if a future widget overflows, the page won't horizontally scroll.
+
+**Backend dev settings note (not committed):**
+- Got `appsettings.Development.json` from teammate via Slack for local backend run. Contains both `MainAppDbConnection` and `AuthConnection`. File is gitignored and lives only in worktree.
+
+**Next steps:**
+- Azure SWA staging slot cap is full -- PR previews fail to deploy until old environments are cleaned up in the portal. Doesn't block submission since Vercel is the prod frontend.
+- Remaining Thursday deliverables: Lighthouse a11y ≥ 90, 5 page screenshots desktop+mobile, retrospective, OKR metric, burndown.
+
+---
+
 ## 2026-04-09 -- ML UX polish, social insights fallback, tooltip standardization (Brandon)
 
 **What was done:**

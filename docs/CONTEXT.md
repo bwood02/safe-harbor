@@ -6,37 +6,40 @@ INTEX W26 capstone project for IS 401 (PM), IS 413 (Dev), IS 414 (Security), IS 
 
 ## Current Status
 
-**Phase:** Tuesday Apr 7 (evening) — already past Wednesday's "one working page" target: 5 vertical slices wired end-to-end against live Azure SQL.
-**Sprint:** Tuesday — Design + first working pages
-**Deployed/Target:** Frontend on Vercel (auto-deploy on main). Backend runs locally against live Azure SQL `intexserverdatabase.database.windows.net / IntexDB`. Backend not yet deployed.
+**Phase:** Thursday Apr 9 — iterate + polish day, T-1 from final submission.
+**Sprint:** Thursday — IS 401 iterate deliverables.
+**Deployed/Target:** Frontend on Vercel (auto-deploy on main). Backend runs locally against live Azure SQL `intexserverdatabase.database.windows.net / IntexDB`. Identity DB on same server, separate `AuthDB` catalog. ML FastAPI service runs locally on :8010.
 
 ### What exists
-- 5 vertical slices live end-to-end:
-  1. **Home / Landing** (`/`) — `PublicImpactController` → `HomePage`
-  2. **Impact / Donor Dashboard** (`/impact`) — `ImpactController` (`/summary`, `/outcomes`)
-  3. **Admin Dashboard / Command Center** (`/admin`) — `AdminDashboardController` (`kpis`, `safehouses`, `weekly-activity`, `recent-activity`, `activity-log`, `upcoming-reviews`)
-  4. **Donors & Contributions** (`/donors`) — `SupportersController` + `DonationsController`
-  5. **Process Recording** (`/process-recordings`) — `ResidentsController` + `ProcessRecordingsController`
-- ASP.NET Core .NET 10 backend with EF Core models for all 17 tables (PR #7/#8) and per-resource controllers (slices 1-5)
-- React + Vite frontend: `PublicHeader` (public routes) / `StaffHeader` (admin routes), per-slice typed hooks with mock fallback, warm cream/burgundy design tokens
-- `frontend/src/lib/api.ts` — typed `apiGet<T>`, `apiPost<TReq,TRes>`, `apiPut<TReq,TRes>` helpers that return `{ data, error }`
-- All admin KPIs anchor to the most recent date with real activity (handles historical seed data)
-- Admin Dashboard backend logic now includes:
-  - active resident occupancy per safehouse
-  - education/health averages from latest per-resident records (active residents only)
-  - incident counts from latest monthly metric per safehouse (`month_start <= today`)
-- ML pipelines: donor churn + resident wellbeing notebooks under `ml-pipelines/`
-- 17-table schema applied to Azure SQL, seeded
-- Plan doc: `plans/2026-04-07-five-vertical-slices.md`
-- Backend Azure SQL conn string lives in `backend/backend/appsettings.Development.json` (gitignored, NOT committed). See `docs/SETUP.md`.
+- **Public pages:** `/` (Home with Our Mission section), `/impact`, `/contact`, `/privacy`, `/login`, `/register`, `/logout`
+- **Admin pages (RBAC, ASP.NET Identity):** `/admin` (Command Center), `/caseload`, `/process-recordings`, `/visitation-logs`, `/donors`, `/social-media`, `/reports`, `/admin/ml-integration`
+- **Donor pages:** `/donor` (My Dashboard)
+- **Backend:** ASP.NET Core .NET 10, EF Core for all 17 tables, per-resource controllers, ASP.NET Identity with separate `AuthDB`, security headers (CSP/HSTS), `[Authorize]` on CUD endpoints
+- **Auth:** Login/register/logout flows, AuthContext on frontend, role-protected routes via `RequireRole`. Test accounts: `admin@admin.com / iamalittleteapot` (Admin), `donor@donor.com / iamthebestdonor` (Donor)
+- **Frontend design system:** warm cream/burgundy tokens, `AppHeader` with grouped nav (6 top-level items, 2 dropdowns: Case Management, Fundraising), burger menu + accordion on mobile, `LogoMark` lighthouse component. All pages mobile-responsive with `overflow-x-hidden` defense-in-depth.
+- **ML pipelines:** donor churn, donor high-value, early warning, reintegration readiness, resident wellbeing, social engagement -- exposed via FastAPI `ml_api/main.py` and proxied through `MlController` in backend. Per-resource panels in `frontend/src/components/ml/`.
+- **GDPR:** cookie consent banner active, privacy policy at `/privacy`, footer linked from every page
+- **Pagination:** caseload, process recordings, visitation logs, audit log
+- **Plan doc:** `plans/2026-04-07-five-vertical-slices.md`
+- **Backend conn strings** in `backend/backend/appsettings.Development.json` (gitignored): `MainAppDbConnection` + `AuthConnection` -- get from Slack
+
+### Key file pointers
+- Header: `frontend/src/components/shared/AppHeader.tsx`
+- Footer: `frontend/src/components/shared/PublicFooter.tsx`
+- Logo: `frontend/src/components/shared/LogoMark.tsx`, favicon `frontend/public/safe-harbor-icon.svg`
+- Auth client: `frontend/src/lib/AuthApi.ts`, context `frontend/src/context/AuthContext.tsx`
+- API client: `frontend/src/lib/api.ts`
+- Routes: `frontend/src/App.tsx`
+- ML hooks: `frontend/src/hooks/useMl*.ts`
+- Backend Identity: `backend/backend/Models/AuthIdentityDbContext.cs`, `Models/AuthIdentityGenerator.cs`, `Controllers/AuthController.cs`
 
 ### What's needed next
-- IS 414 security: ASP.NET Identity, password policy, `[Authorize(Roles="Admin")]` on CUD endpoints, RBAC, CSP header, HSTS
-- GDPR cookie consent banner + privacy policy footer (linked from home)
-- Forms: Donors create/edit, Process Recording New Entry submission (currently preview-only)
-- Backend deployment to Azure App Service
-- Wire ML pipeline outputs into the admin dashboard
-- Wednesday IS 401 deliverables: 5 page screenshots desktop+mobile, user feedback session, burndown update
+- Azure SWA staging slot cap is full -- clean up old PR environments in portal so PR previews can deploy again (Vercel still works for prod)
+- Backend deployment to Azure App Service (currently local-only)
+- Lighthouse a11y ≥ 90% audit
+- 5 page screenshots desktop+mobile for IS 401 Thursday deliverable
+- User feedback session, retrospective, OKR metric, burndown update
+- Final submission Friday 10am
 
 ## Tech Stack
 
