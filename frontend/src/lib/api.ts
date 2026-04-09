@@ -119,4 +119,36 @@ export async function apiPut<TRequest, TResponse>(
   }
 }
 
+export async function apiDelete<TResponse>(path: string): Promise<ApiResult<TResponse>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      let errorDetail = `HTTP ${res.status} ${res.statusText}`;
+      try {
+        const body = await res.json();
+        if (typeof body === 'string') errorDetail = body;
+        else if (body?.error) errorDetail = String(body.error);
+        else if (body?.detail) errorDetail = String(body.detail);
+      } catch {
+        // ignore parse issues and keep status text fallback
+      }
+      return { data: null, error: errorDetail };
+    }
+
+    if (res.status === 204) {
+      return { data: null as TResponse, error: null };
+    }
+
+    const data = (await res.json()) as TResponse;
+    return { data, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Network error';
+    return { data: null, error: message };
+  }
+}
+
 export { API_BASE_URL };

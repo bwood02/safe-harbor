@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet, apiPost, apiPut, API_BASE_URL } from '@/lib/api';
+import { apiDelete, apiGet, apiPost, apiPut } from '@/lib/api';
 import type {
   ResidentListItem,
   ResidentDetail,
@@ -121,26 +121,12 @@ export function useCaseloadMutations() {
   const softDelete = useCallback(async (id: number) => {
     setSaving(true);
     setError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/CaseloadInventory/residents/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      });
-      setSaving(false);
-      if (!res.ok) {
-        const msg = `HTTP ${res.status} ${res.statusText}`;
-        setError(msg);
-        return { data: null, error: msg };
-      }
-      const data = await res.json();
-      return { data, error: null };
-    } catch (err) {
-      setSaving(false);
-      const msg = err instanceof Error ? err.message : 'Network error';
-      setError(msg);
-      return { data: null, error: msg };
-    }
+    const res = await apiDelete<{ residentId: number; caseStatus: string; dateClosed: string }>(
+      `/api/CaseloadInventory/residents/${id}`,
+    );
+    setSaving(false);
+    if (res.error) setError(res.error);
+    return res;
   }, []);
 
   return { create, update, softDelete, saving, error };
