@@ -26,6 +26,7 @@ export interface ProcessRecordingSession {
   progressNoted: boolean;
   concernsFlagged: boolean;
   referralMade: boolean;
+  notesRestricted?: string | null;
 }
 
 export interface PagedProcessRecordingSessions {
@@ -130,6 +131,7 @@ function makeMockSessions(residentId: number): ProcessRecordingSession[] {
     recordingId: residentId * 100 + i,
     residentId,
     sessionDate: new Date(2026, 2, 20 - i * 7).toISOString().slice(0, 10),
+    notesRestricted: null,
   }));
 }
 

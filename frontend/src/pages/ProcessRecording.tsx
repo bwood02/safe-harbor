@@ -6,7 +6,7 @@ import {
   useProcessRecordings,
   type ProcessRecordingSession,
 } from '@/hooks/useProcessRecording';
-import { apiPost } from '@/lib/api';
+import { apiDelete, apiPost, apiPut } from '@/lib/api';
 
 export default function ProcessRecordingPage() {
   const residents = useResidentsForPicker();
@@ -16,6 +16,8 @@ export default function ProcessRecordingPage() {
   const [reloadToken, setReloadToken] = useState(0);
   const [sessionPage, setSessionPage] = useState(1);
   const [sessionPageSize, setSessionPageSize] = useState(10);
+  const [editingSession, setEditingSession] = useState<ProcessRecordingSession | null>(null);
+  const [deletingSession, setDeletingSession] = useState<ProcessRecordingSession | null>(null);
 
   const effectiveId =
     selectedId ?? (residents.data && residents.data.length > 0 ? residents.data[0].residentId : null);
@@ -131,7 +133,12 @@ export default function ProcessRecordingPage() {
 
             <div className="space-y-4">
               {sessions.data?.items.map((s) => (
-                <SessionCard key={s.recordingId} session={s} />
+                <SessionCard
+                  key={s.recordingId}
+                  session={s}
+                  onEdit={() => setEditingSession(s)}
+                  onDelete={() => setDeletingSession(s)}
+                />
               ))}
             </div>
 
@@ -201,12 +208,46 @@ export default function ProcessRecordingPage() {
         />
       )}
 
+      {editingSession && (
+        <EditRecordingModal
+          key={editingSession.recordingId}
+          session={editingSession}
+          residentCaseLabel={selectedResident?.caseControlNo ?? '—'}
+          onClose={() => setEditingSession(null)}
+          onSaved={() => {
+            setEditingSession(null);
+            setReloadToken((v) => v + 1);
+          }}
+        />
+      )}
+
+      {deletingSession && (
+        <DeleteRecordingConfirmModal
+          session={deletingSession}
+          onClose={() => setDeletingSession(null)}
+          onDeleted={() => {
+            const wasLastOnPage = sessions.data?.items.length === 1;
+            setDeletingSession(null);
+            if (wasLastOnPage && sessionPage > 1) setSessionPage((p) => Math.max(1, p - 1));
+            setReloadToken((v) => v + 1);
+          }}
+        />
+      )}
+
       <PublicFooter />
     </div>
   );
 }
 
-function SessionCard({ session }: { session: ProcessRecordingSession }) {
+function SessionCard({
+  session,
+  onEdit,
+  onDelete,
+}: {
+  session: ProcessRecordingSession;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const interventions = session.interventionsApplied
     .split(/[,;]/)
     .map((s) => s.trim())
@@ -214,16 +255,34 @@ function SessionCard({ session }: { session: ProcessRecordingSession }) {
 
   return (
     <article className="border border-border rounded-lg bg-card p-5">
-      <header className="flex items-start justify-between mb-3">
-        <div>
+      <header className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0 flex-1">
           <div className="font-serif text-lg text-foreground">{session.sessionDate}</div>
           <div className="text-sm text-muted-foreground">
             {session.socialWorker} · {session.sessionDurationMinutes} min
           </div>
         </div>
-        <span className="px-2.5 py-1 text-xs rounded-full bg-secondary text-secondary-foreground">
-          {session.sessionType}
-        </span>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="px-2.5 py-1 text-xs font-medium rounded-md border border-border text-foreground hover:bg-muted transition"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="px-2.5 py-1 text-xs font-medium rounded-md border border-destructive/40 text-destructive hover:bg-destructive/10 transition"
+            >
+              Delete
+            </button>
+          </div>
+          <span className="px-2.5 py-1 text-xs rounded-full bg-secondary text-secondary-foreground">
+            {session.sessionType}
+          </span>
+        </div>
       </header>
 
       <div className="flex items-center gap-2 text-sm mb-3">
@@ -302,6 +361,397 @@ type CreateProcessRecordingRequest = {
   referralMade: boolean;
   notesRestricted: string | null;
 };
+
+type UpdateProcessRecordingRequest = {
+  sessionDate: string;
+  socialWorker: string;
+  sessionType: string;
+  sessionDurationMinutes: number;
+  emotionalStateObserved: string;
+  emotionalStateEnd: string;
+  sessionNarrative: string;
+  interventionsApplied: string;
+  followUpActions: string;
+  progressNoted: boolean;
+  concernsFlagged: boolean;
+  referralMade: boolean;
+  notesRestricted: string | null;
+};
+
+const STANDARD_EMOTIONS = [
+  'Calm',
+  'Anxious',
+  'Sad',
+  'Angry',
+  'Hopeful',
+  'Withdrawn',
+  'Happy',
+  'Distressed',
+] as const;
+
+const STANDARD_SESSION_TYPES = ['Individual', 'Group', 'Crisis'] as const;
+
+function sessionDateToInput(iso: string): string {
+  return iso.length >= 10 ? iso.slice(0, 10) : iso;
+}
+
+function mergeOptionList(standard: readonly string[], current: string): string[] {
+  const set = new Set(standard);
+  return set.has(current) ? [...standard] : [current, ...standard];
+}
+
+function EditRecordingModal({
+  session,
+  residentCaseLabel,
+  onClose,
+  onSaved,
+}: {
+  session: ProcessRecordingSession;
+  residentCaseLabel: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [sessionDate, setSessionDate] = useState(() => sessionDateToInput(session.sessionDate));
+  const [socialWorker, setSocialWorker] = useState(session.socialWorker);
+  const [sessionType, setSessionType] = useState(session.sessionType);
+  const [sessionDurationMinutes, setSessionDurationMinutes] = useState(session.sessionDurationMinutes);
+  const [emotionalStateObserved, setEmotionalStateObserved] = useState(session.emotionalStateObserved);
+  const [emotionalStateEnd, setEmotionalStateEnd] = useState(session.emotionalStateEnd);
+  const [sessionNarrative, setSessionNarrative] = useState(session.sessionNarrative);
+  const [interventionsApplied, setInterventionsApplied] = useState(session.interventionsApplied);
+  const [followUpActions, setFollowUpActions] = useState(session.followUpActions);
+  const [progressNoted, setProgressNoted] = useState(session.progressNoted);
+  const [concernsFlagged, setConcernsFlagged] = useState(session.concernsFlagged);
+  const [referralMade, setReferralMade] = useState(session.referralMade);
+  const [notesRestricted, setNotesRestricted] = useState(session.notesRestricted ?? '');
+
+  const sessionTypeOptions = mergeOptionList(STANDARD_SESSION_TYPES, sessionType);
+  const emotionStartOptions = mergeOptionList(STANDARD_EMOTIONS, emotionalStateObserved);
+  const emotionEndOptions = mergeOptionList(STANDARD_EMOTIONS, emotionalStateEnd);
+
+  const canSubmit =
+    !!sessionDate &&
+    socialWorker.trim().length > 0 &&
+    sessionDurationMinutes > 0 &&
+    sessionNarrative.trim().length > 0 &&
+    interventionsApplied.trim().length > 0 &&
+    followUpActions.trim().length > 0;
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit || saving) return;
+    setSaving(true);
+    setError(null);
+
+    const payload: UpdateProcessRecordingRequest = {
+      sessionDate,
+      socialWorker: socialWorker.trim(),
+      sessionType: sessionType.trim(),
+      sessionDurationMinutes,
+      emotionalStateObserved: emotionalStateObserved.trim(),
+      emotionalStateEnd: emotionalStateEnd.trim(),
+      sessionNarrative: sessionNarrative.trim(),
+      interventionsApplied: interventionsApplied.trim(),
+      followUpActions: followUpActions.trim(),
+      progressNoted,
+      concernsFlagged,
+      referralMade,
+      notesRestricted: notesRestricted.trim() ? notesRestricted.trim() : null,
+    };
+
+    const res = await apiPut<UpdateProcessRecordingRequest, ProcessRecordingSession>(
+      `/api/ProcessRecordings/${session.recordingId}`,
+      payload,
+    );
+    setSaving(false);
+    if (res.data !== null) {
+      onSaved();
+    } else {
+      setError(res.error ?? 'Could not update process recording');
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-foreground/35 backdrop-blur-[2px] flex items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full h-[100svh] sm:h-auto sm:max-w-3xl sm:max-h-[90svh] overflow-hidden sm:overflow-y-auto rounded-none sm:rounded-3xl border border-border bg-white shadow-xl flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-serif text-foreground">Edit Process Recording</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Resident <span className="font-medium text-foreground">{residentCaseLabel}</span> — recording
+              identity and resident link cannot be changed here.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 w-9 rounded-full border border-border hover:bg-background transition-colors grid place-items-center"
+            aria-label="Close edit modal"
+          >
+            <span className="text-lg leading-none text-foreground">×</span>
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit} className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5">
+            {error ? <p className="text-xs text-destructive mb-3">{error}</p> : null}
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs uppercase tracking-wide text-muted-foreground">Session date</label>
+                <input
+                  type="date"
+                  className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                  value={sessionDate}
+                  onChange={(e) => setSessionDate(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground">Social worker</label>
+                  <input
+                    className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                    value={socialWorker}
+                    onChange={(e) => setSocialWorker(e.target.value)}
+                    placeholder="Name"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground">Session type</label>
+                  <select
+                    className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                    value={sessionType}
+                    onChange={(e) => setSessionType(e.target.value)}
+                  >
+                    {sessionTypeOptions.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground">Duration (min)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                    value={sessionDurationMinutes}
+                    onChange={(e) => setSessionDurationMinutes(Number(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Emotional state (start)
+                  </label>
+                  <select
+                    className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                    value={emotionalStateObserved}
+                    onChange={(e) => setEmotionalStateObserved(e.target.value)}
+                  >
+                    {emotionStartOptions.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Emotional state (end)
+                  </label>
+                  <select
+                    className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                    value={emotionalStateEnd}
+                    onChange={(e) => setEmotionalStateEnd(e.target.value)}
+                  >
+                    {emotionEndOptions.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-wide text-muted-foreground">Session narrative</label>
+                <textarea
+                  rows={3}
+                  className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                  value={sessionNarrative}
+                  onChange={(e) => setSessionNarrative(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-wide text-muted-foreground">Interventions applied</label>
+                <textarea
+                  rows={2}
+                  className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                  value={interventionsApplied}
+                  onChange={(e) => setInterventionsApplied(e.target.value)}
+                  placeholder="e.g., CBT; grounding; art therapy"
+                />
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-wide text-muted-foreground">Follow up actions</label>
+                <textarea
+                  rows={2}
+                  className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                  value={followUpActions}
+                  onChange={(e) => setFollowUpActions(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={progressNoted}
+                    onChange={(e) => setProgressNoted(e.target.checked)}
+                  />
+                  Progress noted
+                </label>
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={concernsFlagged}
+                    onChange={(e) => setConcernsFlagged(e.target.checked)}
+                  />
+                  Concerns flagged
+                </label>
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={referralMade}
+                    onChange={(e) => setReferralMade(e.target.checked)}
+                  />
+                  Referral made
+                </label>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Notes restricted (optional)
+                </label>
+                <textarea
+                  rows={2}
+                  className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                  value={notesRestricted}
+                  onChange={(e) => setNotesRestricted(e.target.value)}
+                  placeholder="Restricted-access notes…"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="sticky bottom-0 bg-white border-t border-border px-4 sm:px-6 py-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-4 py-2 text-sm rounded-md border border-border hover:bg-muted disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!canSubmit || saving}
+              className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DeleteRecordingConfirmModal({
+  session,
+  onClose,
+  onDeleted,
+}: {
+  session: ProcessRecordingSession;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function confirmDelete() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    const res = await apiDelete(`/api/ProcessRecordings/${session.recordingId}`);
+    setBusy(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    onDeleted();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-foreground/40 backdrop-blur-[2px] flex items-center justify-center p-4"
+      onClick={() => !busy && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-recording-title"
+        className="max-w-md w-full rounded-2xl border border-border bg-white shadow-xl p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="delete-recording-title" className="text-lg font-serif text-foreground">
+          Delete process recording?
+        </h2>
+        <p className="text-sm text-muted-foreground mt-2">
+          This will permanently remove the session on{' '}
+          <span className="font-medium text-foreground">{sessionDateToInput(session.sessionDate)}</span> led by{' '}
+          <span className="font-medium text-foreground">{session.socialWorker}</span>. This cannot be undone.
+        </p>
+        {error ? <p className="text-xs text-destructive mt-3">{error}</p> : null}
+        <div className="flex justify-end gap-2 mt-6">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-md border border-border hover:bg-muted disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void confirmDelete()}
+            className="px-4 py-2 text-sm rounded-md bg-destructive text-destructive-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {busy ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function NewEntryModal({
   onClose,
