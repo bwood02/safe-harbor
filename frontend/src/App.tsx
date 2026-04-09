@@ -29,6 +29,9 @@ export default function App() {
         <Route path="/caseload" element={<CaseloadInventoryPage />} />
         <Route path="/donors" element={<DonorsContributionsPage />} />
         <Route path="/process-recordings" element={<ProcessRecordingPage />} />
+        <Route path="/visitation-logs" element={<VisitationLogsPage />} />
+        <Route path="/reports" element={<ReportsAnalyticsPage />} />
+        <Route path="/social-media" element={<SocialMediaDashboardPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/logout" element={<LogoutPage />} />
