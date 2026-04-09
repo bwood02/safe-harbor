@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import AppHeader from '@/components/shared/AppHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
+import InlineHoverTooltip from '@/components/shared/InlineHoverTooltip';
+import MlDonorChurnPanel from '@/components/ml/MlDonorChurnPanel';
+import MlDonorHighValuePanel from '@/components/ml/MlDonorHighValuePanel';
 import {
   useSupporters,
   useSupporterDetail,
@@ -16,6 +19,7 @@ import {
   formatInOriginalCurrency,
   formatPhp,
   isPhpCurrency,
+  phpToUsdTooltip,
   toPhpAmount,
 } from '@/lib/currencyPhp';
 import type {
@@ -291,6 +295,10 @@ function formatDonationHistoryAmount(
 ): string {
   if (isPhpCurrency(currencyCode)) return formatPhp(value);
   return formatInOriginalCurrency(value, currencyCode);
+}
+
+function phpTooltipForCurrency(value: number, currencyCode: string | null | undefined): string | undefined {
+  return isPhpCurrency(currencyCode) ? phpToUsdTooltip(value) : undefined;
 }
 
 function formatDate(iso: string | null): string {
@@ -782,7 +790,11 @@ export default function DonorsContributionsPage() {
             label="Active monetary donors"
             value={String(kpis.activeMonetary)}
           />
-          <KpiCard label="Last 30 days (PHP)" value={formatPhp(kpis.last30)} />
+          <KpiCard
+            label="Last 30 days (PHP)"
+            value={formatPhp(kpis.last30)}
+            tooltip={phpToUsdTooltip(kpis.last30)}
+          />
           <KpiCard label="Top program area" value={kpis.topArea} />
         </section>
 
@@ -890,7 +902,9 @@ export default function DonorsContributionsPage() {
                           {s.donationCount}
                         </td>
                         <td className="px-4 py-3 text-right text-foreground">
-                          {formatPhp(s.totalGiven)}
+                          <InlineHoverTooltip text={phpToUsdTooltip(s.totalGiven)}>
+                            {formatPhp(s.totalGiven)}
+                          </InlineHoverTooltip>
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -1033,12 +1047,12 @@ export default function DonorsContributionsPage() {
                             >
                               <div className="flex justify-between text-foreground">
                                 <span>{d.donationType}</span>
-                                <span>
+                                <InlineHoverTooltip text={phpTooltipForCurrency(d.estimatedValue, d.currencyCode)}>
                                   {formatDonationHistoryAmount(
                                     d.estimatedValue,
                                     d.currencyCode,
                                   )}
-                                </span>
+                                </InlineHoverTooltip>
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {formatDate(d.donationDate)}
@@ -1071,6 +1085,11 @@ export default function DonorsContributionsPage() {
                                     d.amount != null
                                       ? formatDonationHistoryAmount(d.amount, d.currencyCode)
                                       : '—'
+                                  }
+                                  tooltip={
+                                    d.amount != null
+                                      ? phpTooltipForCurrency(d.amount, d.currencyCode)
+                                      : undefined
                                   }
                                 />
                                 <MiniRow label="Impact Unit" value={d.impactUnit || '—'} />
@@ -1142,11 +1161,23 @@ export default function DonorsContributionsPage() {
                     <span>
                       {selectedSupporter ? (
                         <>
-                          <span className="text-foreground">{formatPhp(donorAmount)}</span>
-                          <span className="text-muted-foreground"> / {formatPhp(pa.total)}</span>
+                          <span className="text-foreground">
+                            <InlineHoverTooltip text={phpToUsdTooltip(donorAmount)}>
+                              {formatPhp(donorAmount)}
+                            </InlineHoverTooltip>
+                          </span>
+                          <span className="text-muted-foreground">
+                            {' '}
+                            /{' '}
+                            <InlineHoverTooltip text={phpToUsdTooltip(pa.total)}>
+                              {formatPhp(pa.total)}
+                            </InlineHoverTooltip>
+                          </span>
                         </>
                       ) : (
-                        formatPhp(pa.total)
+                        <InlineHoverTooltip text={phpToUsdTooltip(pa.total)}>
+                          {formatPhp(pa.total)}
+                        </InlineHoverTooltip>
                       )}
                     </span>
                   </div>
@@ -1167,6 +1198,9 @@ export default function DonorsContributionsPage() {
             })}
           </div>
         </section>
+
+        <MlDonorChurnPanel page={page} pageSize={PAGE_SIZE} totalCount={supporters.data?.total} />
+        <MlDonorHighValuePanel page={page} pageSize={PAGE_SIZE} />
       </main>
       <PublicFooter />
 
@@ -1850,13 +1884,15 @@ export default function DonorsContributionsPage() {
   );
 }
 
-function KpiCard({ label, value }: { label: string; value: string }) {
+function KpiCard({ label, value, tooltip }: { label: string; value: string; tooltip?: string }) {
   return (
     <div className="bg-card border border-border rounded-lg p-5">
       <div className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
-      <div className="text-2xl font-serif text-foreground mt-1">{value}</div>
+      <div className="text-2xl font-serif text-foreground mt-1">
+        <InlineHoverTooltip text={tooltip}>{value}</InlineHoverTooltip>
+      </div>
     </div>
   );
 }
@@ -1870,11 +1906,13 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MiniRow({ label, value }: { label: string; value: string }) {
+function MiniRow({ label, value, tooltip }: { label: string; value: string; tooltip?: string }) {
   return (
     <div>
       <div className="text-muted-foreground">{label}</div>
-      <div className="text-foreground font-medium">{value}</div>
+      <div className="text-foreground font-medium">
+        <InlineHoverTooltip text={tooltip}>{value}</InlineHoverTooltip>
+      </div>
     </div>
   );
 }

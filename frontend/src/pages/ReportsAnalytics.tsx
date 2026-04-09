@@ -15,12 +15,10 @@ import type {
   ResidentOutcomePoint,
   SafehouseComparisonRow,
 } from '@/types/reports';
+import { formatPhp, phpToUsdTooltip } from '@/lib/currencyPhp';
+import InlineHoverTooltip from '@/components/shared/InlineHoverTooltip';
 
 type SortKey = keyof SafehouseComparisonRow;
-
-function formatPhp(n: number): string {
-  return `₱${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-}
 
 function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
@@ -79,7 +77,9 @@ function HBar({ label, value, max }: { label: string; value: number; max: number
     <div className="mb-2">
       <div className="flex justify-between text-sm text-foreground mb-1">
         <span className="truncate mr-2">{label}</span>
-        <span className="text-muted-foreground">{formatPhp(value)}</span>
+        <span className="text-muted-foreground">
+          <InlineHoverTooltip text={phpToUsdTooltip(value)}>{formatPhp(value)}</InlineHoverTooltip>
+        </span>
       </div>
       <div className="w-full bg-muted h-2 rounded">
         <div className="h-2 bg-primary rounded" style={{ width: `${pct}%` }} />

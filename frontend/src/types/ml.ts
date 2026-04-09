@@ -1,0 +1,57 @@
+export interface MlPipelineStatusRow {
+  id: string;
+  notebook: string;
+  uiPath: string;
+  dotnetRoute: string;
+  /** FastAPI routes on the ML service (Ml:BaseUrl), e.g. POST /predict/donor-churn */
+  mlApiRoute: string;
+  mlModelLoaded: boolean;
+  error: string | null;
+}
+
+export interface MlDeploymentStatus {
+  mlServiceConfigured: boolean;
+  mlReachable?: boolean;
+  message?: string;
+  checkedAtUtc: string;
+  pipelines: MlPipelineStatusRow[];
+}
+
+export interface DonorChurnScoreRow {
+  supporterId: number;
+  churnProbability: number;
+  tier: string;
+  recommendedAction: string;
+  error: string | null;
+}
+
+export interface ResidentWellbeingScoreRow {
+  residentId: number;
+  predictedWellbeingNext: number;
+  wellbeingLag: number;
+  error: string | null;
+}
+
+export interface DonorHighValueScoreRow {
+  supporterId: number;
+  highValueProbability: number;
+  error: string | null;
+}
+
+export interface EarlyWarningScoreRow {
+  residentId: number;
+  struggleProbability: number;
+  error: string | null;
+}
+
+export interface ReintegrationReadinessScoreRow {
+  residentId: number;
+  readinessProbability: number;
+  error: string | null;
+}
+
+export interface SocialEngagementScoreRow {
+  month: string;
+  predictedNextMonetary: number;
+  error: string | null;
+}

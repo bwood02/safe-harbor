@@ -34,8 +34,23 @@ const phpFormatter = new Intl.NumberFormat('en-PH', {
   maximumFractionDigits: 0,
 });
 
+const usdFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 2,
+});
+
 export function formatPhp(amount: number): string {
   return phpFormatter.format(Math.round(amount));
+}
+
+export function formatUsdFromPhp(phpAmount: number): string {
+  const usdPerPhp = 1 / (PHP_PER_UNIT.USD || 58);
+  return usdFormatter.format(phpAmount * usdPerPhp);
+}
+
+export function phpToUsdTooltip(phpAmount: number): string {
+  return `Approx. ${formatUsdFromPhp(phpAmount)} USD`;
 }
 
 /** True when we show values as native PHP (no foreign formatting in history). */

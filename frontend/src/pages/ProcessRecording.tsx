@@ -14,11 +14,13 @@ export default function ProcessRecordingPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const [sessionPage, setSessionPage] = useState(1);
+  const [sessionPageSize, setSessionPageSize] = useState(10);
 
   const effectiveId =
     selectedId ?? (residents.data && residents.data.length > 0 ? residents.data[0].residentId : null);
 
-  const sessions = useProcessRecordings(effectiveId, reloadToken);
+  const sessions = useProcessRecordings(effectiveId, sessionPage, sessionPageSize, reloadToken);
 
   const filteredResidents = useMemo(() => {
     if (!residents.data) return [];
@@ -75,7 +77,10 @@ export default function ProcessRecordingPage() {
                 {filteredResidents.map((r) => (
                   <li key={r.residentId}>
                     <button
-                      onClick={() => setSelectedId(r.residentId)}
+                      onClick={() => {
+                        setSelectedId(r.residentId);
+                        setSessionPage(1);
+                      }}
                       className={`w-full text-left px-4 py-3 border-b border-border transition ${
                         r.residentId === effectiveId
                           ? 'bg-accent text-accent-foreground'
@@ -116,7 +121,7 @@ export default function ProcessRecordingPage() {
               <div className="p-8 text-center text-muted-foreground">Loading sessions…</div>
             )}
 
-            {!sessions.loading && sessions.data && sessions.data.length === 0 && (
+            {!sessions.loading && sessions.data && sessions.data.items.length === 0 && (
               <div className="p-12 text-center border border-dashed border-border rounded-lg">
                 <p className="text-muted-foreground">
                   No process recordings yet for this resident.
@@ -125,10 +130,55 @@ export default function ProcessRecordingPage() {
             )}
 
             <div className="space-y-4">
-              {sessions.data?.map((s) => (
+              {sessions.data?.items.map((s) => (
                 <SessionCard key={s.recordingId} session={s} />
               ))}
             </div>
+
+            {!sessions.loading && sessions.data && sessions.data.totalCount > 0 ? (
+              <div className="mt-4 border border-border rounded-lg bg-card px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <label htmlFor="process-recordings-page-size" className="text-muted-foreground">
+                    Rows per page
+                  </label>
+                  <select
+                    id="process-recordings-page-size"
+                    className="rounded-md border border-border bg-white px-2 py-1 text-foreground"
+                    value={sessionPageSize}
+                    onChange={(e) => {
+                      setSessionPageSize(Number(e.target.value));
+                      setSessionPage(1);
+                    }}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">
+                    Page {sessions.data.page} of {sessions.data.totalPages} ({sessions.data.totalCount} records)
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={sessions.loading || sessions.data.page <= 1}
+                    onClick={() => setSessionPage(Math.max(1, sessions.data!.page - 1))}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={sessions.loading || sessions.data.page >= sessions.data.totalPages}
+                    onClick={() => setSessionPage(Math.min(sessions.data!.totalPages, sessions.data!.page + 1))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {sessions.error && (
               <div className="mt-4 text-xs text-muted-foreground">
@@ -537,7 +587,6 @@ function NewEntryModal({
               type="submit"
               disabled={!canSubmit || saving}
               className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              title={!canSubmit ? 'Fill all required fields' : undefined}
             >
               {saving ? 'Saving…' : 'Save'}
             </button>

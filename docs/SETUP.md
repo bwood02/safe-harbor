@@ -46,8 +46,47 @@ npm run dev                 # starts on http://localhost:5173
 ```bash
 cd ml-pipelines
 pip install -r requirements.txt
+pip install -e ../ml_service
 jupyter notebook
 ```
+
+### ML inference API (FastAPI) + .NET bridge
+
+1. Train donor churn (from repo root, requires `data/`):
+
+   ```bash
+   python scripts/train_donor_churn.py
+   ```
+
+2. Run FastAPI (repo root; uses `models/`):
+
+   ```bash
+   pip install -r ml_api/requirements.txt
+   pip install -e ml_service
+   # optional production-like mode:
+   # export MODEL_SOURCE=blob
+   # export AZURE_STORAGE_CONNECTION_STRING=...
+   # export AZURE_BLOB_CONTAINER=ml-models
+   # export AZURE_BLOB_PREFIX=models/latest
+   python -m uvicorn ml_api.main:app --host 127.0.0.1 --port 8010
+   ```
+
+3. Backend: in `appsettings.Development.json` (gitignored) set:
+
+   ```json
+   "Ml": {
+     "BaseUrl": "http://localhost:8010",
+     "ApiKey": ""
+   }
+   ```
+
+   Optional: set `ML_API_KEY` in the FastAPI environment and the same value in `Ml:ApiKey`.
+
+Full matrix and endpoints: [`docs/ml-deployment.md`](ml-deployment.md).
+Frontend page mapping for ML:
+- `/donors`: donor churn + donor high-value
+- `/caseload`: resident wellbeing + early warning + reintegration readiness
+- `/social-media`: social engagement to donations
 
 ## Environment Variables
 

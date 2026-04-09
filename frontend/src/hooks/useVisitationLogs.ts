@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, apiPost, apiPut, API_BASE_URL } from '@/lib/api';
-import type { HomeVisit, HomeVisitInput, CaseConference } from '@/types/visitationLogs';
+import type { HomeVisit, HomeVisitInput, CaseConference, PagedHomeVisits } from '@/types/visitationLogs';
 
 interface QueryState<T> {
   data: T | null;
@@ -55,8 +55,12 @@ const mockConferences: CaseConference[] = [
   },
 ];
 
-export function useVisits(residentId: number | null): QueryState<HomeVisit[]> & { refetch: () => void } {
-  const [state, setState] = useState<QueryState<HomeVisit[]>>({
+export function useVisits(
+  residentId: number | null,
+  page: number,
+  pageSize: number,
+): QueryState<PagedHomeVisits> & { refetch: () => void } {
+  const [state, setState] = useState<QueryState<PagedHomeVisits>>({
     data: null,
     loading: true,
     error: null,
@@ -65,23 +69,40 @@ export function useVisits(residentId: number | null): QueryState<HomeVisit[]> & 
 
   useEffect(() => {
     if (residentId == null) {
-      setState({ data: [], loading: false, error: null });
+      setState({
+        data: { items: [], totalCount: 0, page: 1, pageSize, totalPages: 1 },
+        loading: false,
+        error: null,
+      });
       return;
     }
     let cancelled = false;
     setState({ data: null, loading: true, error: null });
-    apiGet<HomeVisit[]>(`/api/VisitationLogs/visits?residentId=${residentId}`).then((res) => {
+    apiGet<PagedHomeVisits>(
+      `/api/VisitationLogs/visits?residentId=${residentId}&page=${page}&pageSize=${pageSize}`,
+    ).then((res) => {
       if (cancelled) return;
       if (res.data) {
         setState({ data: res.data, loading: false, error: null });
       } else {
-        setState({ data: mockVisits(residentId), loading: false, error: res.error });
+        const mockAll = mockVisits(residentId);
+        const safePage = Math.max(1, page);
+        const safePageSize = Math.max(1, pageSize);
+        const totalCount = mockAll.length;
+        const totalPages = totalCount === 0 ? 1 : Math.ceil(totalCount / safePageSize);
+        const clampedPage = Math.min(safePage, totalPages);
+        const items = mockAll.slice((clampedPage - 1) * safePageSize, clampedPage * safePageSize);
+        setState({
+          data: { items, totalCount, page: clampedPage, pageSize: safePageSize, totalPages },
+          loading: false,
+          error: res.error,
+        });
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [residentId, tick]);
+  }, [residentId, page, pageSize, tick]);
 
   return { ...state, refetch: () => setTick((t) => t + 1) };
 }

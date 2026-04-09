@@ -10,6 +10,7 @@ import ProcessRecordingPage from '@/pages/ProcessRecording';
 import VisitationLogsPage from '@/pages/VisitationLogs';
 import ReportsAnalyticsPage from '@/pages/ReportsAnalytics';
 import SocialMediaDashboardPage from '@/pages/SocialMediaDashboard';
+import MlIntegrationPage from '@/pages/MlIntegrationPage';
 import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/impact" element={<ImpactDashboardPage />} />
         <Route path="/donor" element={<DonorDashboardPage />} />
         <Route path="/admin" element={<AdminDashboardPage />} />
+        <Route path="/admin/ml-integration" element={<MlIntegrationPage />} />
         <Route path="/caseload" element={<CaseloadInventoryPage />} />
         <Route path="/donors" element={<DonorsContributionsPage />} />
         <Route path="/process-recordings" element={<ProcessRecordingPage />} />

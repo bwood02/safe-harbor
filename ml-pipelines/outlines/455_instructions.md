@@ -1,0 +1,145 @@
+# IS 455 INTEX — Machine learning instructions
+
+## Context
+
+Your client recently heard a presentation by the founders of Lighthouse Sanctuary, a US-based 501(c)(3) nonprofit that operates safe homes for girls who are survivors of sexual abuse or sex trafficking in the Philippines. Lighthouse Sanctuary contracts with in-country individuals and organizations to provide safehouses and rehabilitation services and is funded from local and international donors.
+
+Inspired by the amazing good being performed by Lighthouse Sanctuary, your client has decided to create a similar organization to assist in other regions that are lacking similar services. Fortunately, Lighthouse Sanctuary has graciously shared anonymized information about their operations to help your client understand the day-to-day operations of the organization. This includes sample operational documentation such as caseload inventory records, process recording formats (structured counseling session notes), home visitation reports, and annual accomplishment report templates. Your role is to help your client develop the technology resources needed to effectively run the new organization and to help the client understand how to collect and utilize data (like that shared by Lighthouse) to drive business decisions.
+
+The client is engaging your services so that they can meet the following **primary goals before launch**:
+
+1. **Donors and fundraising.** The organization depends entirely on donations to operate, and the founders are constantly worried about donor retention and growth. They lose donors and don’t always understand why. They run fundraising campaigns but aren’t sure which ones actually move the needle versus just generating noise. They want to know which donors might give more if asked, which ones are at risk of lapsing, and how to personalize outreach without a dedicated marketing team. They also want to communicate to donors specifically how their generosity is benefiting the residents, but they don’t have a good way to connect donation activity to outcomes.
+
+2. **Case management and resident outcomes.** The organization’s primary operational work is protecting and rehabilitating victims. The founders worry about girls falling through the cracks. With limited staff managing multiple safehouses, they need to know which girls are progressing and which are struggling, which interventions are actually working, and when a resident might be ready for reintegration or at risk of regression. They need a system to help them manage cases across the full lifecycle, from intake and case assessment through counseling, education, health services, and ultimately reintegration or placement. This includes structured counseling session documentation (process recordings), home visitation tracking, case conferences, and intervention planning.
+
+3. **Social media and outreach.** Social media is the organization’s primary channel for reaching potential donors, but the founders freely admit they are not experienced with social media. They struggle with basic questions: What should they post? On which platforms? How often? What time of day? What kind of content actually leads to donations versus just generating likes? They have been posting sporadically and want to be more strategic, but they don’t have a marketing team and can’t afford to hire one. They need the technology to help them make smarter decisions about their social media presence and understand what is actually working.
+
+## Dataset
+
+The data for the project is provided at the following link:
+
+[Google Drive — project dataset](https://drive.google.com/file/d/1Dl8AcS1ydbHKL6PU0gP6tbUPqhPsUeXZ/view?usp=sharing)
+
+The dataset includes **17 tables** that are available as **17 CSV files**. You are also provided a data dictionary (see Appendix A) explaining the tables and fields. These tables and fields represent what Lighthouse Sanctuary has been keeping track of and your client’s new organization will need to track similar data. However, you may think of additional tables and fields to add to the database that you believe would be useful and you don’t have to use all of the existing data. You can modify the data as needed to meet the needs of the project.
+
+The dataset is organized into **three main domains**:
+
+| Domain | Description |
+| :--- | :--- |
+| **Donor and Support** | Tables tracking safehouses, partners, supporters, donations (monetary, in-kind, time, skills, and social media advocacy), and donation allocations. These tables support the donor-facing and administrative features of the application. |
+| **Case Management** | Tables tracking residents (the girls served by the organization), their case information, process recordings (counseling sessions), home visitations, education records, health and wellbeing records, intervention plans, and incident reports. These tables support the core operational case management features of the application. |
+| **Outreach and Communication** | Tables tracking social media activity, engagement metrics, and public impact snapshots. These tables support the organization’s social media strategy and public-facing communications. |
+
+## Deliverables
+
+### IS 455 — Machine learning
+
+The organization you are building technology for collects rich data across multiple dimensions: donor activity, resident case histories, counseling sessions, education progress, health outcomes, home visitation reports, safehouse operations, and social media engagement. The organization’s leadership wants to understand how machine learning can help them make better decisions and improve outcomes for the girls they serve.
+
+This is your opportunity to practice **pipeline thinking**, the central idea of this course. Machine learning is not a collection of algorithms learned in isolation. It is an end-to-end decision system that begins with problem framing and ends with deployed, monitored systems. Your task is to demonstrate that you can build that complete system thoughtfully, creatively, and rigorously.
+
+### Requirements
+
+You should deliver **as many complete machine learning pipelines as you can identify and have time to build**, integrated into or supported by the web application your team is building. Each pipeline must follow the full end-to-end ML pipeline as taught in the textbook and should address a meaningful business question for the organization. There is no maximum. The more pipelines your team delivers (with quality), the better your score. However, don’t spend more time on this requirement than it’s worth (**1/5 of your overall INTEX grade**).
+
+Each pipeline should demonstrate the full lifecycle as outlined in the Foreword:
+
+1. **Problem Framing (Ch. 1).** Define the business question, select success metrics, and determine whether a predictive or explanatory approach is appropriate. This is one of the most important decisions you will make. As the textbook explains, prediction and explanation are two distinct modeling goals that are related but not interchangeable. Predictive modeling aims to generate reliable predictions judged by performance on new, unseen data. Explanatory modeling aims to understand and quantify relationships between variables, ideally identifying cause-and-effect patterns that can inform strategy or policy. Confusing these two goals is a common source of costly analytical mistakes. For each pipeline, generate **both a causal and predictive model**. Besides deploying a predictive pipeline, indicate within the `.ipynb` file which features are most impactful and recommend decisions that can be made based on the results.
+
+2. **Data Acquisition and Preparation (Ch. 2–5, 7).** Identify and collect the data needed from the provided tables. Clean, transform, and engineer features from raw data. As the textbook notes, data preparation is often the most time-intensive stage of any analytics project. Expect to spend **60–80%** of your pipeline effort here. Build **reproducible** data preparation pipelines (Ch. 7), not one-off scripts.
+
+3. **Exploration (Ch. 6, 8).** Examine distributions, relationships, and anomalies to build intuition about the data before modeling. This is where you discover what the data can actually tell you. Look for the relationships that have been built into this dataset. They are there to be found.
+
+4. **Modeling (Ch. 9–14).** Select and train algorithms that learn patterns from the data. You may use any approach covered in the course: multiple linear regression for causal or predictive purposes (Ch. 9–11), decision trees (Ch. 12), classification (Ch. 13), or ensemble methods like bagging, boosting, and stacking (Ch. 14). Remember that for explanatory work, a model that sacrifices some predictive accuracy to produce clear, defensible estimates, like a carefully specified OLS regression, can be preferable to a black-box model with marginally better predictions. For predictive work, complex features and less interpretable models can be appropriate when they improve accuracy and operational performance.
+
+5. **Evaluation and Selection (Ch. 15).** Assess model performance using appropriate metrics, validation strategies, and fairness checks. Use proper train/test splits or cross-validation. Tune hyperparameters. Compare multiple models where appropriate. Most importantly, **interpret your results in business terms**. Don’t just report an R² or accuracy score. Explain what the numbers mean for the organization’s decisions.
+
+6. **Feature Selection (Ch. 16).** Thoughtfully select which features to include. Demonstrate that you understand why certain features matter and others don’t. Use feature importance, selection techniques, or domain reasoning to justify your choices.
+
+7. **Deployment (Ch. 17).** Move your validated model into the production web application where it can generate predictions, automate decisions, or inform stakeholders. This could mean serving predictions through an API endpoint, displaying model outputs on a dashboard, or providing an interactive interface where users can input data and receive predictions or insights.
+
+Each pipeline should address a **different business problem**. Teams should try to demonstrate a **variety of modeling approaches** across their pipelines; ideally including at least one predictive model and one explanatory model, but this is not strictly required. The dataset has been designed with multiple discoverable relationships across the donor domain, the case management domain, and the social media/outreach domain. Look carefully at the data and think about what questions the organization would want answered.
+
+### Why these instructions are intentionally vague
+
+In the real world, nobody hands you a target variable and tells you which algorithm to use. A business leader says “we need to understand our donors better” or “we’re worried about girls falling through the cracks” and it is your job as the data scientist to translate that into a concrete, solvable problem. As the textbook describes in the Career Pathways section, effective practitioners at the problem framing stage “determine which questions are worth answering, select success metrics, and translate context into requirements technical teams can implement.” The ability to look at a dataset and see opportunities, to ask “what questions could this data answer?”, is one of the most valuable skills you will develop. This project is designed to simulate that experience.
+
+You are not being told what to predict, what to classify, or what to explain. The data has been carefully constructed with real, discoverable relationships across multiple domains. Your task is to find them. You will be evaluated relative to each other, and the teams that identify more meaningful opportunities and execute them well will earn higher scores.
+
+### How to use AI effectively
+
+You are encouraged to use AI tools throughout this process, but **how** you use AI matters. We recommend using AI in the following sequence, which mirrors the pipeline stages you have learned:
+
+1. **AI as problem setter** (supports Problem Framing). Start by using AI to help you understand the business domain and brainstorm potential problems worth solving. Give AI the data dictionary and ask it to help you think about what questions the organization might need answered. Push it to consider both predictive questions (“Can we forecast which residents are ready for reintegration?”) and explanatory questions (“What factors most drive successful reintegration?”). Don’t accept its first suggestions uncritically. Push it to think deeper about the business context and to consider perspectives you might have missed.
+
+2. **AI as creative expander** (supports Data Preparation and Exploration). Once you have a candidate problem, use AI to help you think about features you might engineer, relationships you might explore, and data from other tables you might join. Ask it to suggest transformations, interaction terms, or aggregations you might not have considered. Remember that 60–80% of pipeline effort is data preparation. This is where AI can help you think more broadly about the raw materials available to you.
+
+3. **AI as critical evaluator** (supports Evaluation and the prediction/explanation tradeoff). Before you commit to a direction, use AI to poke holes in your approach. Ask it: “What could go wrong with this model? Am I confusing prediction with explanation?” Use it to stress-test your thinking the way a skeptical colleague would. For explanatory models, ask whether your causal claims are defensible. For predictive models, ask about data leakage and validation soundness.
+
+4. **AI as verification agent** (supports Evaluation and Selection). Use AI to verify that your code is correct, your evaluation methodology is sound, and your results make sense. Ask it to review your train/test split, validate your metrics, and confirm that your feature selection and hyperparameter tuning are reasonable.
+
+5. **AI as production agent** (supports Deployment). Finally, use AI to help you deploy your model, create API endpoints, build dashboard visualizations, and integrate your results into the web application. This is where AI can save you the most time on implementation details so you can focus on ensuring your deployed model provides real value to end users.
+
+**Key principle:** you drive the thinking and decision-making at every stage. AI accelerates your work, but the intellectual ownership must be yours. You must understand and be able to explain every part of your pipeline. If you cannot explain why you made a particular choice, you are using AI incorrectly. The goal, as the textbook states, is “not just to fit models, but to build analytical capability that holds up in real environments.”
+
+### Applying the principles from the textbook
+
+Your pipelines will be evaluated on how well they apply the principles taught in Chapters 1–17. Specifically, we will be looking for evidence that you understand:
+
+- **Pipeline thinking over algorithm-only thinking** (Foreword, Ch. 1): Each pipeline should tell a complete story from business problem to deployed solution, not just demonstrate that you can run an algorithm.
+
+- **The prediction vs. explanation distinction** (Foreword, Ch. 9–11): For each pipeline, you must explicitly state whether your goal is prediction or explanation and make modeling choices that are consistent with that goal. If you are explaining, coefficients and interpretability matter more than predictive accuracy. If you are predicting, out-of-sample performance matters more than whether individual coefficients are interpretable. Do not treat accurate predictions as causal evidence, and do not produce interpretable analyses that cannot be operationalized.
+
+- **Rigorous data preparation** (Ch. 2–3, 7): Feature engineering, handling missing data, building reproducible pipelines. The quality of what goes into the model matters as much as the model itself.
+
+- **Thoughtful exploration** (Ch. 6, 8): Demonstrate that you actually looked at the data before modeling. Distributions, correlations, anomalies, and relationships should be documented and should inform your modeling choices.
+
+- **Appropriate model selection** (Ch. 12–14): Use the right tool for the job. Consider multiple approaches. If you use an ensemble (Ch. 14), explain why it is appropriate. If you use a decision tree (Ch. 12), explain what you gain in interpretability.
+
+- **Evaluation discipline** (Ch. 15): Proper validation, appropriate metrics, honest interpretation of results. Understand the real-world consequences of errors for this specific organization.
+
+- **Feature selection with purpose** (Ch. 16): Don’t throw everything in and hope for the best. Demonstrate that you thought about which features matter and why.
+
+- **Deployment as a first-class concern** (Ch. 17): A model that only exists in a notebook is not a pipeline. Move it into production.
+
+A team that demonstrates mastery of these principles across multiple pipelines will outscore a team that produces many pipelines with shallow execution. Quality and quantity both matter, but **quality comes first**.
+
+### Rubric (20 points total)
+
+Your score will be based on the number of **complete, quality** pipelines your team delivers. Each pipeline will be evaluated using the following criteria aligned with the full ML pipeline:
+
+| Pipeline stage | What we’re evaluating |
+| :--- | :--- |
+| **Problem Framing** | Is the business problem clearly stated? Does it matter to the organization? Is the choice of predictive vs. explanatory approach explicitly justified? |
+| **Data Acquisition, Preparation & Exploration** | Is the data explored thoroughly? Are missing values, outliers, and feature engineering handled well? Is the data preparation reproducible as a pipeline? Are joins across tables done correctly and documented? |
+| **Modeling & Feature Selection** | Is the model appropriate for the stated goal (prediction or explanation)? Are multiple approaches considered or compared? Is feature selection thoughtful and justified? |
+| **Evaluation & Selection** | Are appropriate metrics used? Is the model validated properly (e.g., train/test split, cross-validation)? Are results interpreted in business terms, not just statistical terms? |
+| **Deployment & Integration** | Is the model deployed and accessible? Is it integrated with the web application in a meaningful way? Does it provide value to end users? |
+
+### What to submit
+
+For each pipeline, submit a **Jupyter notebook** (`.ipynb`) in your team’s GitHub repository inside a folder named `ml-pipelines/`. Name each notebook descriptively (e.g., `donor-churn-classifier.ipynb`, `reintegration-readiness.ipynb`). Each notebook should be **self-contained** and tell the complete story of that pipeline from problem framing through deployment. Specifically, each notebook **must** include the following sections:
+
+1. **Problem Framing.** A clear written explanation (not just code) of the business problem you are solving, who in the organization cares about it, and why it matters. Explicitly state whether your approach is predictive or explanatory and justify that choice using the framework from the textbook.
+
+2. **Data Acquisition, Preparation & Exploration.** Load the relevant data, explore it visually and statistically, document what you find (distributions, correlations, missing values, outliers), and prepare it for modeling. Show your feature engineering decisions and explain why you made them. If you join data from multiple tables, explain the logic. Build this as a **reproducible pipeline** (Ch. 7), not a one-off script.
+
+3. **Modeling & Feature Selection.** Build your model(s), compare approaches where appropriate, and document your choices. Justify your feature selection. If you try multiple algorithms, show the comparison. Include hyperparameter tuning if relevant. If your goal is explanatory, discuss what the model structure reveals about relationships in the data. If your goal is predictive, focus on out-of-sample performance.
+
+4. **Evaluation & Interpretation.** Evaluate your model using appropriate metrics. Use proper validation (train/test split, cross-validation). Interpret your results in **business terms**, not just reporting an R² or accuracy score; explain what it means for the organization’s decisions. Discuss the real-world consequences of false positives and false negatives for this specific context.
+
+5. **Causal and Relationship Analysis.** This is critical. For each pipeline, include a written analysis discussing the relationships you discovered in the data. What features are most important and why? Do the relationships make theoretical sense? If your model is explanatory, what causal story do the coefficients or feature importances tell? Are those causal claims defensible, or are you observing correlation? If your model is predictive, what does it reveal about the underlying data structure even if the goal isn’t causal inference? Be honest about the limitations: correlation is not causation, and you should discuss when you can and cannot make causal claims. This section is where you demonstrate that you understand the prediction vs. explanation distinction at a deep level.
+
+6. **Deployment Notes.** Briefly describe how this model is deployed and integrated into the web application (e.g., API endpoint, dashboard component, interactive form). Include any relevant code snippets or references to where the integration code lives in the repo.
+
+The notebook should be **fully executable**. A TA should be able to run it top to bottom and reproduce your results. Make sure your data paths are correct relative to the repository structure.
+
+In addition to the notebooks, your deployed web application should include the model outputs in a **meaningful** way (predictions, dashboards, interactive tools, etc.) as described in the **Deployment & Integration** section of the rubric.
+
+### Important notes
+
+- Each pipeline must address a **genuinely different** business problem, not just the same problem with different algorithms.
+
+- A poorly executed pipeline will not help your score. Focus on doing each pipeline well before starting the next one.
+
+- Notebooks that are not executable or that lack written analysis will receive **significant deductions** regardless of model quality.

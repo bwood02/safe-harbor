@@ -23,6 +23,15 @@ builder.Services.AddDbContext<MainAppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("MainAppDbConnection")));
 
+builder.Services.AddHttpClient("MlApi", (sp, client) =>
+{
+    var cfg = sp.GetRequiredService<IConfiguration>();
+    var baseUrl = cfg["Ml:BaseUrl"]?.Trim().TrimEnd('/');
+    if (!string.IsNullOrWhiteSpace(baseUrl))
+        client.BaseAddress = new Uri(baseUrl + "/");
+    client.Timeout = TimeSpan.FromSeconds(120);
+});
+
 // Identity database
 builder.Services.AddDbContext<AuthIdentityDbContext>(options =>
     options.UseSqlServer(
@@ -59,6 +68,7 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins(
                 "http://localhost:5173",
+                "http://127.0.0.1:5173",
                 "https://safe-harbor.vercel.app",
                 "https://nice-beach-0045c401e.6.azurestaticapps.net",
                 "https://safeharbor.mhammerventures.com"
@@ -104,6 +114,25 @@ app.UseHttpsRedirection();
 app.UseSecurityHeaders();
 
 app.UseCors(FrontendCorsPolicy);
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/Ml", StringComparison.OrdinalIgnoreCase))
+    {
+        var started = DateTime.UtcNow;
+        await next();
+        var elapsedMs = (DateTime.UtcNow - started).TotalMilliseconds;
+        app.Logger.LogInformation(
+            "ML request {Method} {Path} -> {StatusCode} in {ElapsedMs:0.0}ms",
+            context.Request.Method,
+            context.Request.Path,
+            context.Response.StatusCode,
+            elapsedMs);
+        return;
+    }
+
+    await next();
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

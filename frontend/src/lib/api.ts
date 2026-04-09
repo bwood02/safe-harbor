@@ -6,9 +6,19 @@
 // and a mock fallback object so pages always render even if the backend is
 // down or the connection string isn't configured.
 
-const API_BASE_URL: string =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-  'http://localhost:5176';
+function resolveApiBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (raw !== undefined && String(raw).trim() !== '') {
+    return String(raw).trim().replace(/\/$/, '');
+  }
+  // Dev: relative /api so Vite proxies to the backend (see vite.config.ts). No CORS; works with `dotnet run` http profile.
+  if (import.meta.env.DEV) {
+    return '';
+  }
+  return 'http://localhost:5176';
+}
+
+const API_BASE_URL: string = resolveApiBaseUrl();
 
 export interface ApiResult<T> {
   data: T | null;

@@ -54,9 +54,9 @@ export default function ImpactDashboardPage() {
       >
         <div className="absolute inset-0 sh-warm-hero-bg -z-10" />
         
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 w-full">
-          <div className="grid md:grid-cols-12 gap-6 md:gap-8 items-center">
-            <div className="md:col-span-6 lg:col-span-5">
+        <div className="max-w-6xl mx-auto px-6 relative z-10 w-full">
+          <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
+            <div className="w-full md:flex-1 md:pr-6">
               <span className="inline-block py-1 px-3 rounded-full bg-secondary/30 text-foreground text-xs sm:text-sm font-semibold tracking-wider uppercase mb-4 md:mb-5 border border-secondary/50">
                 {featuredStory.eyebrow}
               </span>
@@ -85,10 +85,14 @@ export default function ImpactDashboardPage() {
               </div>
             </div>
 
-            <div className="md:col-span-6 lg:col-span-7 relative">
-              <div className="relative rounded-[2rem] overflow-hidden shadow-2xl aspect-[16/10] md:aspect-[4/4] lg:aspect-[4/3] max-h-[52svh] md:max-h-[58svh] sh-warm-hero-art-base">
-                {/* Abstract warm art placeholder for hero */}
-                <div className="absolute inset-0 sh-warm-hero-art-overlay opacity-80 mix-blend-multiply" />
+            <div className="w-full md:w-[42%] lg:w-[44%] md:ml-auto relative flex justify-center md:justify-end lg:pl-6">
+              <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl aspect-[16/10] md:aspect-[4/4] lg:aspect-[4/3] max-h-[52svh] md:max-h-[58svh] sh-warm-hero-art-base">
+                <img
+                  src="/images/impact-hero-image.jpg"
+                  alt="Safe Harbor impact story"
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 sh-warm-hero-art-overlay opacity-55 mix-blend-multiply" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-foreground/60 to-transparent">
                   <p className="text-white text-base sm:text-lg font-serif italic text-shadow-sm">
                     "{featuredStory.imageCaption}"
@@ -165,7 +169,6 @@ export default function ImpactDashboardPage() {
                   <div
                     key={month}
                     className="flex-1 h-full flex flex-col items-center justify-end gap-2"
-                    title={`${month}: $${total.toLocaleString()}`}
                   >
                     <div
                       className="w-full rounded-t-md bg-primary/80 hover:bg-primary transition-colors"
@@ -274,6 +277,12 @@ export default function ImpactDashboardPage() {
                 'sh-story-gradient-2',
                 'sh-story-gradient-3',
               ];
+              const storyImageById: Record<string, string> = {
+                S001: '/images/impact-hero-image.jpg',
+                S002: '/images/reconnecting-with-family.jpg',
+                S003: '/images/educational-excellence.jpg',
+              };
+              const storyImage = storyImageById[story.id];
 
               return (
                 <article
@@ -281,10 +290,14 @@ export default function ImpactDashboardPage() {
                   className="group min-w-[80%] sm:min-w-[48%] lg:min-w-[32%] snap-start rounded-3xl bg-background border border-border/40 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
                   aria-label={`Story card: ${story.title}`}
                 >
-                  <div
-                    className={`w-full aspect-[16/9] ${warmGradients[i % 3]} relative`}
-                    aria-hidden="true"
-                  >
+                  <div className={`w-full aspect-[16/9] ${!storyImage ? warmGradients[i % 3] : ''} relative`} aria-hidden="true">
+                    {storyImage ? (
+                      <img
+                        src={storyImage}
+                        alt={story.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : null}
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/5 transition-opacity duration-300" />
                   </div>
                   <div className="p-4 md:p-5">
