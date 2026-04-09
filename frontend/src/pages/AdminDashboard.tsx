@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import StaffHeader from '@/components/shared/StaffHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
 import {
@@ -6,12 +7,10 @@ import {
   useWeeklyActivity,
   useRecentActivity,
   useUpcomingReviews,
+  type RecentActivityItem,
 } from '@/hooks/useAdminDashboard';
-
-function formatCurrency(n: number): string {
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
-  return `$${n.toFixed(0)}`;
-}
+import { apiGet } from '@/lib/api';
+import { formatPhp } from '@/lib/currencyPhp';
 
 function formatRelativeDate(iso: string): string {
   const d = new Date(iso);
@@ -26,12 +25,62 @@ function formatRelativeDate(iso: string): string {
   return d.toLocaleDateString();
 }
 
+function ActivityFeedList({ items }: { items: RecentActivityItem[] }) {
+  if (items.length === 0) {
+    return <p className="text-sm text-muted-foreground">No activity.</p>;
+  }
+  return (
+    <ul className="space-y-5">
+      {items.map((item, i) => (
+        <li key={`${item.title}-${item.timestamp}-${i}`} className="flex gap-4 items-start group">
+          <div
+            className="mt-1.5 h-2 w-2 rounded-full bg-primary/60 group-hover:bg-primary transition-colors flex-shrink-0"
+            aria-hidden="true"
+          />
+          <div>
+            <p className="text-base font-medium text-foreground leading-snug mb-1">{item.title}</p>
+            <p className="text-sm text-muted-foreground">
+              {item.meta} <span className="mx-1 opacity-50">•</span> {formatRelativeDate(item.timestamp)}
+            </p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function AdminDashboardPage() {
   const kpis = useAdminKpis();
   const safehousesQuery = useAdminSafehouses();
   const weeklyQuery = useWeeklyActivity();
   const recentQuery = useRecentActivity();
   const upcomingQuery = useUpcomingReviews();
+
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditItems, setAuditItems] = useState<RecentActivityItem[] | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!auditOpen) return;
+    let cancelled = false;
+    setAuditLoading(true);
+    setAuditError(null);
+    setAuditItems(null);
+    apiGet<RecentActivityItem[]>('/api/AdminDashboard/activity-log').then((res) => {
+      if (cancelled) return;
+      setAuditLoading(false);
+      if (res.data !== null) {
+        setAuditItems(res.data);
+      } else {
+        setAuditError(res.error ?? 'Could not load audit log');
+        setAuditItems([]);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [auditOpen]);
 
   const kpiCards = [
     {
@@ -48,7 +97,7 @@ export default function AdminDashboardPage() {
       value: kpis.loading
         ? '…'
         : kpis.data
-          ? formatCurrency(kpis.data.recentDonationsAmount)
+          ? formatPhp(kpis.data.recentDonationsAmount)
           : '—',
       sub: 'Last 7 days' as string | null,
     },
@@ -205,23 +254,15 @@ export default function AdminDashboardPage() {
               {recent.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No recent activity.</p>
               ) : (
-                <ul className="space-y-5">
-                  {recent.map((item, i) => (
-                    <li key={`${item.title}-${i}`} className="flex gap-4 items-start group">
-                      <div className="mt-1.5 h-2 w-2 rounded-full bg-primary/60 group-hover:bg-primary transition-colors flex-shrink-0" aria-hidden="true" />
-                      <div>
-                        <p className="text-base font-medium text-foreground leading-snug mb-1">{item.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.meta} <span className="mx-1 opacity-50">•</span> {formatRelativeDate(item.timestamp)}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <ActivityFeedList items={recent} />
               )}
               <button
+                type="button"
                 className="mt-8 w-full py-3 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-background transition-colors"
                 aria-label="View full audit log"
+                aria-haspopup="dialog"
+                aria-expanded={auditOpen}
+                onClick={() => setAuditOpen(true)}
               >
                 View Full Audit Log
               </button>
@@ -256,6 +297,48 @@ export default function AdminDashboardPage() {
       </main>
 
       <PublicFooter />
+
+      {auditOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setAuditOpen(false);
+          }}
+        >
+          <div
+            className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl border border-border bg-white shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="audit-log-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 border-b border-border px-6 py-4 shrink-0">
+              <h2 id="audit-log-title" className="text-lg font-serif text-foreground">
+                Full activity log
+              </h2>
+              <button
+                type="button"
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+                onClick={() => setAuditOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="overflow-y-auto px-6 py-5 flex-1 min-h-0">
+              {auditLoading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : auditError ? (
+                <p className="text-sm text-destructive">{auditError}</p>
+              ) : auditItems && auditItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No activity recorded.</p>
+              ) : (
+                <ActivityFeedList items={auditItems ?? []} />
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
