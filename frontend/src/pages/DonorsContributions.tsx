@@ -770,9 +770,8 @@ export default function DonorsContributionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-12">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <header className="mb-8">
           <h1 className="text-4xl font-serif text-foreground mb-2">
             Donors & Contributions

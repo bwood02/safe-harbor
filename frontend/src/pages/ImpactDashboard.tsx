@@ -45,11 +45,9 @@ export default function ImpactDashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      
-
       {/* Hero Section */}
       <section
-        className="relative min-h-[calc(100svh-72px)] flex items-center overflow-hidden py-6 md:py-8"
+        className="relative flex items-center overflow-hidden py-12 md:py-20"
         aria-labelledby="hero-headline"
       >
         <div className="absolute inset-0 sh-warm-hero-bg -z-10" />
@@ -105,7 +103,7 @@ export default function ImpactDashboardPage() {
       </section>
 
       {/* Impact Stats */}
-      <section className="min-h-[calc(100svh-72px)] flex items-center py-6 md:py-8 bg-white border-y border-border/50" aria-labelledby="impact-heading">
+      <section className="py-12 md:py-16 bg-white border-y border-border/50" aria-labelledby="impact-heading">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
           <div className="text-center max-w-3xl mx-auto mb-6 md:mb-8">
             <h1
@@ -187,7 +185,7 @@ export default function ImpactDashboardPage() {
       </section>
 
       {/* Case Outcomes + Quote */}
-      <section className="min-h-[calc(100svh-72px)] flex items-center py-6 md:py-8 bg-background" aria-labelledby="outcomes-heading">
+      <section className="py-12 md:py-16 bg-background" aria-labelledby="outcomes-heading">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-10 items-center">
             {/* Outcomes */}
@@ -248,9 +246,9 @@ export default function ImpactDashboardPage() {
       </section>
 
       {/* Restoration Stories */}
-      <section className="min-h-[calc(100svh-72px)] flex items-center py-6 md:py-8 bg-white" aria-labelledby="stories-heading">
+      <section className="py-12 md:py-16 bg-white" aria-labelledby="stories-heading">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
-          <div className="text-center mb-5 md:mb-6">
+          <div className="text-center mb-8 md:mb-10">
             <h2
               id="stories-heading"
               className="font-serif text-foreground mb-3 text-[clamp(2rem,4vw,3rem)]"
@@ -258,13 +256,8 @@ export default function ImpactDashboardPage() {
               Voices of Hope
             </h2>
             <p className="text-[clamp(1rem,1.4vw,1.15rem)] text-muted-foreground">
-              Placeholder survivor stories - swipe or scroll to browse, then open each full article.
+              Stories of the girls whose lives have been restored through Safe Harbor.
             </p>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 mb-3 md:mb-4 text-xs text-muted-foreground">
-            <span className="rounded-full border border-border px-3 py-1 bg-background">Scroll</span>
-            <span className="rounded-full border border-border px-3 py-1 bg-background">Stories</span>
           </div>
 
           <div

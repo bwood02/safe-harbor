@@ -37,8 +37,8 @@ export default function ProcessRecordingPage() {
     residents.data?.find((r) => r.residentId === effectiveId) ?? null;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="flex items-start justify-between mb-8">
               <div>
             <h1 className="text-4xl font-serif text-foreground mb-2">Process Recording</h1>

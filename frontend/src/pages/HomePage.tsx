@@ -52,11 +52,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      
-
       <main className="flex-1">
         <section
-          className="relative min-h-[calc(100svh-72px)] flex items-center overflow-hidden py-6 md:py-8"
+          className="relative flex items-center overflow-hidden py-12 md:py-20"
           aria-labelledby="home-hero-headline"
         >
           <div className="absolute inset-0 sh-warm-hero-bg -z-10" />

@@ -127,8 +127,8 @@ export default function VisitationLogsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="flex items-start justify-between mb-8 flex-wrap gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-widest text-primary mb-2">

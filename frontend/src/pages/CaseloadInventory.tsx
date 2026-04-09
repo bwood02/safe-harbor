@@ -163,10 +163,10 @@ export default function CaseloadInventoryPage() {
   }, [formInput]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
       
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-12 lg:py-16">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
         <div className="mb-10 flex items-start justify-between gap-6 flex-wrap">
           <div>
             <p className="text-sm font-semibold uppercase tracking-widest text-primary mb-3">

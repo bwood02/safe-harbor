@@ -189,10 +189,8 @@ export default function AdminDashboardPage() {
         : 'Recordings';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      
-
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-12 lg:py-16">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
         {/* Title */}
         <div className="mb-12">
           <h1 className="text-4xl lg:text-5xl font-serif text-foreground mb-4">Command Center</h1>
@@ -251,10 +249,10 @@ export default function AdminDashboardPage() {
                   className="rounded-2xl border border-border overflow-hidden bg-background hover:border-primary/30 transition-colors"
                   aria-label={`${name}: ${status}, ${occupied}/${capacity} occupied`}
                 >
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium text-foreground">{name}</h3>
-                      <div className="flex items-center gap-2">
+                  <div className="p-5 sm:p-6">
+                    <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+                      <h3 className="text-lg font-medium text-foreground min-w-0 flex-1">{name}</h3>
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
                         {incidentCount > 0 ? (
                           <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
                             Alert: {incidentCount} incident{incidentCount === 1 ? '' : 's'}
@@ -290,14 +288,14 @@ export default function AdminDashboardPage() {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 text-right font-medium">{pct}% Full</p>
-                    <div className="mt-4 pt-3 border-t border-border/60 grid grid-cols-2 gap-3 text-xs">
+                    <div className="mt-4 pt-3 border-t border-border/60 grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-3 text-xs">
                       <p className="text-muted-foreground">
                         Health score: <span className="text-foreground font-semibold">{formatHealthScore(avgHealthScore)}</span>
                       </p>
-                      <p className="text-muted-foreground text-right">
+                      <p className="text-muted-foreground sm:text-right">
                         Edu progress: <span className="text-foreground font-semibold">{avgEducationProgress}%</span>
                       </p>
-                      <p className="text-muted-foreground col-span-2">
+                      <p className="text-muted-foreground sm:col-span-2">
                         Incidents this month: <span className="text-foreground font-semibold">{incidentCount}</span>
                       </p>
                     </div>

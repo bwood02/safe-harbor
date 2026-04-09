@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import StaffHeader from '@/components/shared/StaffHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
 import { useMlDeploymentStatus } from '@/hooks/useMlDeploymentStatus';
 
@@ -7,9 +6,8 @@ export default function MlIntegrationPage() {
   const { data, loading, error } = useMlDeploymentStatus();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <StaffHeader />
-      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-12 lg:py-16">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
         <p className="text-sm font-semibold uppercase tracking-widest text-primary mb-3">
           Internal — IS 455
         </p>
