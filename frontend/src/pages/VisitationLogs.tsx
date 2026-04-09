@@ -34,11 +34,13 @@ export default function VisitationLogsPage() {
   const residents = useResidentsForPicker();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [visitsPage, setVisitsPage] = useState(1);
+  const [visitsPageSize, setVisitsPageSize] = useState(10);
 
   const effectiveId =
     selectedId ?? (residents.data && residents.data.length > 0 ? residents.data[0].residentId : null);
 
-  const visits = useVisits(effectiveId);
+  const visits = useVisits(effectiveId, visitsPage, visitsPageSize);
   const conferences = useCaseConferences(effectiveId);
   const mutations = useVisitMutations();
 
@@ -172,7 +174,10 @@ export default function VisitationLogsPage() {
                 {filteredResidents.map((r) => (
                   <li key={r.residentId}>
                     <button
-                      onClick={() => setSelectedId(r.residentId)}
+                      onClick={() => {
+                        setSelectedId(r.residentId);
+                        setVisitsPage(1);
+                      }}
                       className={`w-full text-left px-4 py-3 border-b border-border transition ${
                         r.residentId === effectiveId
                           ? 'bg-accent text-accent-foreground'
@@ -211,12 +216,12 @@ export default function VisitationLogsPage() {
               {visits.loading && (
                 <p className="text-sm text-muted-foreground">Loading visits…</p>
               )}
-              {!visits.loading && (visits.data?.length ?? 0) === 0 && (
+              {!visits.loading && (visits.data?.items.length ?? 0) === 0 && (
                 <p className="text-sm text-muted-foreground">No visits recorded yet.</p>
               )}
 
               <ul className="space-y-4">
-                {visits.data?.map((v) => (
+                {visits.data?.items.map((v) => (
                   <li
                     key={v.visitationId}
                     className="border border-border rounded-lg bg-card p-5"
@@ -283,6 +288,51 @@ export default function VisitationLogsPage() {
                   </li>
                 ))}
               </ul>
+
+              {!visits.loading && visits.data && visits.data.totalCount > 0 ? (
+                <div className="mt-4 border border-border rounded-lg bg-card px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <label htmlFor="visits-page-size" className="text-muted-foreground">
+                      Rows per page
+                    </label>
+                    <select
+                      id="visits-page-size"
+                      className="rounded-md border border-border bg-white px-2 py-1 text-foreground"
+                      value={visitsPageSize}
+                      onChange={(e) => {
+                        setVisitsPageSize(Number(e.target.value));
+                        setVisitsPage(1);
+                      }}
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      Page {visits.data.page} of {visits.data.totalPages} ({visits.data.totalCount} records)
+                    </span>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={visits.loading || visits.data.page <= 1}
+                      onClick={() => setVisitsPage(Math.max(1, visits.data!.page - 1))}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={visits.loading || visits.data.page >= visits.data.totalPages}
+                      onClick={() => setVisitsPage(Math.min(visits.data!.totalPages, visits.data!.page + 1))}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div>

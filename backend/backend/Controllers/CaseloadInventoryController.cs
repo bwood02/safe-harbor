@@ -38,6 +38,13 @@ public class CaseloadInventoryController : ControllerBase
         int OpenInterventionPlansCount,
         int IncidentCount);
 
+    public record PagedResultDto<T>(
+        List<T> Items,
+        int TotalCount,
+        int Page,
+        int PageSize,
+        int TotalPages);
+
     public class ResidentInputDto
     {
         public string CaseControlNo { get; set; } = "";
@@ -92,7 +99,9 @@ public class CaseloadInventoryController : ControllerBase
         [FromQuery] string? status,
         [FromQuery] int? safehouseId,
         [FromQuery] string? category,
-        [FromQuery] string? riskLevel)
+        [FromQuery] string? riskLevel,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25)
     {
         try
         {
@@ -112,8 +121,16 @@ public class CaseloadInventoryController : ControllerBase
             if (!string.IsNullOrWhiteSpace(riskLevel))
                 q = q.Where(r => r.CurrentRiskLevel == riskLevel);
 
+            var safePage = Math.Max(1, page);
+            var safePageSize = Math.Clamp(pageSize, 5, 100);
+            var totalCount = await q.CountAsync();
+            var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)safePageSize);
+            var clampedPage = Math.Min(safePage, totalPages);
+
             var rows = await q
                 .OrderByDescending(r => r.DateOfAdmission)
+                .Skip((clampedPage - 1) * safePageSize)
+                .Take(safePageSize)
                 .Select(r => new ResidentListItemDto(
                     r.ResidentId,
                     r.CaseControlNo,
@@ -130,7 +147,12 @@ public class CaseloadInventoryController : ControllerBase
                     r.ReintegrationStatus))
                 .ToListAsync();
 
-            return Ok(rows);
+            return Ok(new PagedResultDto<ResidentListItemDto>(
+                rows,
+                totalCount,
+                clampedPage,
+                safePageSize,
+                totalPages));
         }
         catch (Exception ex)
         {

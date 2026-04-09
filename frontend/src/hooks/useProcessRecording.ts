@@ -28,6 +28,14 @@ export interface ProcessRecordingSession {
   referralMade: boolean;
 }
 
+export interface PagedProcessRecordingSessions {
+  items: ProcessRecordingSession[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 interface QueryState<T> {
   data: T | null;
   loading: boolean;
@@ -152,9 +160,11 @@ export function useResidentsForPicker(): QueryState<ResidentPicker[]> {
 
 export function useProcessRecordings(
   residentId: number | null,
+  page: number,
+  pageSize: number,
   reloadToken?: number,
-): QueryState<ProcessRecordingSession[]> {
-  const [state, setState] = useState<QueryState<ProcessRecordingSession[]>>({
+): QueryState<PagedProcessRecordingSessions> {
+  const [state, setState] = useState<QueryState<PagedProcessRecordingSessions>>({
     data: null,
     loading: true,
     error: null,
@@ -162,23 +172,40 @@ export function useProcessRecordings(
 
   useEffect(() => {
     if (residentId == null) {
-      setState({ data: [], loading: false, error: null });
+      setState({
+        data: { items: [], totalCount: 0, page: 1, pageSize, totalPages: 1 },
+        loading: false,
+        error: null,
+      });
       return;
     }
     let cancelled = false;
     setState({ data: null, loading: true, error: null });
-    apiGet<ProcessRecordingSession[]>(`/api/ProcessRecordings?residentId=${residentId}`).then((res) => {
+    apiGet<PagedProcessRecordingSessions>(
+      `/api/ProcessRecordings?residentId=${residentId}&page=${page}&pageSize=${pageSize}`,
+    ).then((res) => {
       if (cancelled) return;
       if (res.data) {
         setState({ data: res.data, loading: false, error: null });
       } else {
-        setState({ data: makeMockSessions(residentId), loading: false, error: res.error });
+        const mockAll = makeMockSessions(residentId);
+        const safePage = Math.max(1, page);
+        const safePageSize = Math.max(1, pageSize);
+        const totalCount = mockAll.length;
+        const totalPages = totalCount === 0 ? 1 : Math.ceil(totalCount / safePageSize);
+        const clampedPage = Math.min(safePage, totalPages);
+        const items = mockAll.slice((clampedPage - 1) * safePageSize, clampedPage * safePageSize);
+        setState({
+          data: { items, totalCount, page: clampedPage, pageSize: safePageSize, totalPages },
+          loading: false,
+          error: res.error,
+        });
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [residentId, reloadToken]);
+  }, [residentId, page, pageSize, reloadToken]);
 
   return state;
 }

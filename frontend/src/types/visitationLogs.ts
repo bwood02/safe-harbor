@@ -27,6 +27,14 @@ export interface CaseConference {
   status: string;
 }
 
+export interface PagedHomeVisits {
+  items: HomeVisit[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export const VISIT_TYPES = [
   'Initial',
   'Follow-up',

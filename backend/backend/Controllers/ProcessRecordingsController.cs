@@ -34,6 +34,15 @@ public class ProcessRecordingsController : ControllerBase
         public string? NotesRestricted { get; set; }
     }
 
+    public class PagedResultDto<T>
+    {
+        public List<T> Items { get; set; } = new();
+        public int TotalCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public int TotalPages { get; set; }
+    }
+
     private static ProcessRecordingDto ToDto(ProcessRecording r) => new()
     {
         RecordingId = r.RecordingId,
@@ -72,19 +81,41 @@ public class ProcessRecordingsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ProcessRecordingDto>>> GetByResident([FromQuery] int residentId)
+    public async Task<ActionResult<PagedResultDto<ProcessRecordingDto>>> GetByResident(
+        [FromQuery] int residentId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
     {
         if (residentId <= 0)
             return BadRequest(new { error = "residentId query parameter is required" });
 
         try
         {
-            var rows = await _context.ProcessRecordings
+            var safePage = Math.Max(1, page);
+            var safePageSize = Math.Clamp(pageSize, 5, 100);
+
+            var baseQuery = _context.ProcessRecordings
                 .Where(r => r.ResidentId == residentId)
                 .OrderByDescending(r => r.SessionDate)
+                .ThenByDescending(r => r.RecordingId);
+
+            var totalCount = await baseQuery.CountAsync();
+            var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)safePageSize);
+            var clampedPage = Math.Min(safePage, totalPages);
+
+            var rows = await baseQuery
+                .Skip((clampedPage - 1) * safePageSize)
+                .Take(safePageSize)
                 .ToListAsync();
 
-            return Ok(rows.Select(ToDto));
+            return Ok(new PagedResultDto<ProcessRecordingDto>
+            {
+                Items = rows.Select(ToDto).ToList(),
+                TotalCount = totalCount,
+                Page = clampedPage,
+                PageSize = safePageSize,
+                TotalPages = totalPages
+            });
         }
         catch (Exception ex)
         {

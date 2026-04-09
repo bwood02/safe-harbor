@@ -61,6 +61,15 @@ public class VisitationLogsController : ControllerBase
         public string Status { get; set; } = "";
     }
 
+    public class PagedResultDto<T>
+    {
+        public List<T> Items { get; set; } = new();
+        public int TotalCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public int TotalPages { get; set; }
+    }
+
     private static VisitDto ToDto(HomeVisitation v) => new()
     {
         VisitationId = v.VisitationId,
@@ -80,11 +89,13 @@ public class VisitationLogsController : ControllerBase
     };
 
     [HttpGet("visits")]
-    public async Task<ActionResult<IEnumerable<VisitDto>>> GetVisits(
+    public async Task<ActionResult<PagedResultDto<VisitDto>>> GetVisits(
         [FromQuery] int? residentId,
         [FromQuery] string? visitType,
         [FromQuery] DateOnly? fromDate,
-        [FromQuery] DateOnly? toDate)
+        [FromQuery] DateOnly? toDate,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
@@ -94,8 +105,27 @@ public class VisitationLogsController : ControllerBase
             if (fromDate.HasValue) q = q.Where(v => v.VisitDate >= fromDate.Value);
             if (toDate.HasValue) q = q.Where(v => v.VisitDate <= toDate.Value);
 
-            var rows = await q.OrderByDescending(v => v.VisitDate).ToListAsync();
-            return Ok(rows.Select(ToDto));
+            var safePage = Math.Max(1, page);
+            var safePageSize = Math.Clamp(pageSize, 5, 100);
+            var totalCount = await q.CountAsync();
+            var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)safePageSize);
+            var clampedPage = Math.Min(safePage, totalPages);
+
+            var rows = await q
+                .OrderByDescending(v => v.VisitDate)
+                .ThenByDescending(v => v.VisitationId)
+                .Skip((clampedPage - 1) * safePageSize)
+                .Take(safePageSize)
+                .ToListAsync();
+
+            return Ok(new PagedResultDto<VisitDto>
+            {
+                Items = rows.Select(ToDto).ToList(),
+                TotalCount = totalCount,
+                Page = clampedPage,
+                PageSize = safePageSize,
+                TotalPages = totalPages
+            });
         }
         catch (Exception ex)
         {

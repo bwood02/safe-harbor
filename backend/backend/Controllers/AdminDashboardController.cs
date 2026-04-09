@@ -56,6 +56,13 @@ public class AdminDashboardController : ControllerBase
         string PlanCategory,
         DateOnly CaseConferenceDate);
 
+    public record PagedResultDto<T>(
+        List<T> Items,
+        int TotalCount,
+        int Page,
+        int PageSize,
+        int TotalPages);
+
     // Anchor "recent" windows to the most recent date with any activity in the DB,
     // not wall-clock today. The seed data is historical so this makes the dashboard
     // render something meaningful even when real-world time has moved past the data.
@@ -427,11 +434,27 @@ public class AdminDashboardController : ControllerBase
     }
 
     [HttpGet("activity-log")]
-    public async Task<ActionResult<List<RecentActivityDto>>> GetActivityLog()
+    public async Task<ActionResult<PagedResultDto<RecentActivityDto>>> GetActivityLog(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25)
     {
         try
         {
-            return Ok(await BuildMergedActivityFeedAsync(limitForRecentWidget: false));
+            var safePage = Math.Max(1, page);
+            var safePageSize = Math.Clamp(pageSize, 5, 100);
+            var allItems = await BuildMergedActivityFeedAsync(limitForRecentWidget: false);
+            var totalCount = allItems.Count;
+            var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)safePageSize);
+            var clampedPage = Math.Min(safePage, totalPages);
+            var skip = (clampedPage - 1) * safePageSize;
+            var items = allItems.Skip(skip).Take(safePageSize).ToList();
+
+            return Ok(new PagedResultDto<RecentActivityDto>(
+                items,
+                totalCount,
+                clampedPage,
+                safePageSize,
+                totalPages));
         }
         catch (Exception ex)
         {
