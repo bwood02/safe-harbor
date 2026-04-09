@@ -1,4 +1,4 @@
-import { Link } from 'wouter';
+import { Link } from 'react-router-dom';
 import { useMlDonorChurnScores } from '@/hooks/useMlDonorChurnScores';
 
 type Props = {
@@ -23,7 +23,7 @@ export default function MlDonorChurnPanel({ page, pageSize }: Props) {
             <code className="text-xs bg-background px-1 rounded">donor_churn_pipeline.ipynb</code>.
           </p>
         </div>
-        <Link href="/admin/ml-integration">
+        <Link to="/admin/ml-integration">
           <span className="text-sm font-medium text-primary cursor-pointer hover:underline">
             View all ML integrations
           </span>

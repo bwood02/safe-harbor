@@ -24,9 +24,8 @@ public class PublicImpactController : ControllerBase
     {
         try
         {
-            var girlsSupported = await _context.Residents
-                .Where(r => r.CaseStatus == "Active")
-                .CountAsync();
+            // "Girls supported" should represent total residents served, not just active cases.
+            var girlsSupported = await _context.Residents.CountAsync();
 
             var safehouses = await _context.Safehouses.CountAsync();
 

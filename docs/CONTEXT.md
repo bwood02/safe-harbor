@@ -14,13 +14,17 @@ INTEX W26 capstone project for IS 401 (PM), IS 413 (Dev), IS 414 (Security), IS 
 - 5 vertical slices live end-to-end:
   1. **Home / Landing** (`/`) — `PublicImpactController` → `HomePage`
   2. **Impact / Donor Dashboard** (`/impact`) — `ImpactController` (`/summary`, `/outcomes`)
-  3. **Admin Dashboard / Command Center** (`/admin`) — `AdminDashboardController` (kpis, safehouses, weekly-activity, recent-activity, upcoming-reviews)
+  3. **Admin Dashboard / Command Center** (`/admin`) — `AdminDashboardController` (`kpis`, `safehouses`, `weekly-activity`, `recent-activity`, `activity-log`, `upcoming-reviews`)
   4. **Donors & Contributions** (`/donors`) — `SupportersController` + `DonationsController`
   5. **Process Recording** (`/process-recordings`) — `ResidentsController` + `ProcessRecordingsController`
 - ASP.NET Core .NET 10 backend with EF Core models for all 17 tables (PR #7/#8) and per-resource controllers (slices 1-5)
 - React + Vite frontend: `PublicHeader` (public routes) / `StaffHeader` (admin routes), per-slice typed hooks with mock fallback, warm cream/burgundy design tokens
-- `frontend/src/lib/api.ts` — typed `apiGet<T>` helper that returns `{ data, error }` and never throws
+- `frontend/src/lib/api.ts` — typed `apiGet<T>`, `apiPost<TReq,TRes>`, `apiPut<TReq,TRes>` helpers that return `{ data, error }`
 - All admin KPIs anchor to the most recent date with real activity (handles historical seed data)
+- Admin Dashboard backend logic now includes:
+  - active resident occupancy per safehouse
+  - education/health averages from latest per-resident records (active residents only)
+  - incident counts from latest monthly metric per safehouse (`month_start <= today`)
 - ML pipelines: donor churn + resident wellbeing notebooks under `ml-pipelines/`
 - 17-table schema applied to Azure SQL, seeded
 - Plan doc: `plans/2026-04-07-five-vertical-slices.md`

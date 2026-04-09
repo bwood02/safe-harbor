@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'wouter';
+import { Link, useLocation } from 'react-router-dom';
 
 const navLinks = [
   { to: '/impact', label: 'Impact' },
@@ -9,15 +9,18 @@ const navLinks = [
   { to: '/donors', label: 'Donors' },
   { to: '/social', label: 'Social' },
   { to: '/process-recordings', label: 'Process Recording' },
+  { to: '/home-visits', label: 'Home Visits' },
+  { to: '/reports', label: 'Reports' },
+  { to: '/social-media', label: 'Social Media' },
 ];
 
 export default function StaffHeader() {
-  const [location] = useLocation();
+  const { pathname } = useLocation();
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/60">
       <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-        <Link href="/admin">
+        <Link to="/admin">
           <span className="font-serif italic font-medium text-foreground text-2xl tracking-wide cursor-pointer select-none">
             Safe Harbor
           </span>
@@ -25,10 +28,10 @@ export default function StaffHeader() {
         <nav aria-label="Main navigation">
           <ul className="flex items-center gap-6">
             {navLinks.map(({ to, label }) => {
-              const isActive = location === to;
+              const isActive = pathname === to;
               return (
                 <li key={to}>
-                  <Link href={to}>
+                  <Link to={to}>
                     <span
                       className={`
                         text-lg font-medium cursor-pointer transition-colors relative py-1

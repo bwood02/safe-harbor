@@ -1,4 +1,4 @@
-import { Link } from 'wouter';
+import { Link } from 'react-router-dom';
 import StaffHeader from '@/components/shared/StaffHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
 import { useMlDeploymentStatus } from '@/hooks/useMlDeploymentStatus';
@@ -79,7 +79,7 @@ export default function MlIntegrationPage() {
                       <td className="px-4 py-3 font-medium">{p.id.replace(/_/g, ' ')}</td>
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.notebook}</td>
                       <td className="px-4 py-3">
-                        <Link href={p.uiPath}>
+                        <Link to={p.uiPath}>
                           <span className="text-primary cursor-pointer hover:underline">{p.uiPath}</span>
                         </Link>
                       </td>

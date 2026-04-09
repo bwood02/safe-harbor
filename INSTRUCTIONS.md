@@ -257,21 +257,55 @@ The backend is an **ASP.NET Core Web API** (JSON to the React app). It follows t
 - Prefer **async** database access in new code (`ToListAsync`, `FirstOrDefaultAsync`, `SaveChangesAsync`) so the server thread is not blocked under load.
 - Keep models aligned with `docs/schema.sql` and the case data dictionary. If the schema changes, update the entity classes and `MainAppDbContext` (and migrations if you use them) consistently.
 
-### Controllers and routing — `MainAppController.cs`
+### Controllers and routing — current architecture
 
-- **At least for now, keep all API routes in `backend/backend/Controllers/MainAppController.cs`.** Do not add separate controller files for new endpoints until the team decides to split them. This keeps one place to look and reduces route conflicts during the sprint.
-- Add new actions as methods on `MainAppController`, with explicit HTTP verbs (`[HttpGet]`, `[HttpPost]`, etc.) and route templates as needed (e.g. `[HttpGet("residents")]`).
-- The controller already uses `[Route("api/[controller]")]`, so endpoints are under **`/api/MainApp/...`** unless you override the route on an action.
+- The backend is now organized as **multiple resource/slice controllers** under `backend/backend/Controllers/`:
+  - `PublicImpactController`
+  - `ImpactController`
+  - `AdminDashboardController`
+  - `SupportersController`
+  - `DonationsController`
+  - `ResidentsController`
+  - `ProcessRecordingsController`
+- Keep using `[Route("api/[controller]")]` + explicit action routes (for example `GET /api/AdminDashboard/kpis`).
+- Prefer adding or updating routes in the relevant existing controller rather than creating a catch-all controller.
 - Apply **`[Authorize]`** and role requirements on CUD (create/update/delete) endpoints per the Security Requirements section.
-- Return types should stay consistent with the project API shape where applicable (`{ data, error, message }` for JSON payloads).
+- Keep API responses consistent per endpoint contract; for typed frontend hooks, return stable JSON shapes.
+
+### AdminDashboard API (important current contract)
+
+- `GET /api/AdminDashboard/kpis`
+- `GET /api/AdminDashboard/safehouses`
+- `GET /api/AdminDashboard/weekly-activity`
+- `GET /api/AdminDashboard/recent-activity`
+- `GET /api/AdminDashboard/activity-log`
+- `GET /api/AdminDashboard/upcoming-reviews`
+
+Current rules in `AdminDashboardController`:
+- KPI and safehouse occupancy use **active residents only**.
+- Education/health averages come from **latest per-resident records** (`education_records`, `health_wellbeing_records`) for active residents.
+- Incident counts come from **latest monthly metric per safehouse** (`safehouse_monthly_metrics`) using max `month_start` where `month_start <= today`.
 
 ### Summary
 
 | Piece | Role |
 |-------|------|
 | **Models** | EF Core entities + `MainAppDbContext` — single source of truth for DB shape in code |
-| **MainAppController** | All HTTP routes for now — inject `MainAppDbContext`, use models to read/write Azure SQL |
+| **Controllers/** | Resource/slice controllers (`AdminDashboard`, `Donations`, etc.) — inject `MainAppDbContext`, use models to read/write Azure SQL |
 | **React frontend** | Consumes the API; it replaces server-side “Views” in classic MVC |
+
+## Frontend API client (`frontend/src/lib/api.ts`)
+
+- Use the shared helpers:
+  - `apiGet<T>(path)`
+  - `apiPost<TRequest, TResponse>(path, body)`
+  - `apiPut<TRequest, TResponse>(path, body)`
+- Base URL is `import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5176'`.
+- These helpers return `Promise<{ data: T | null; error: string | null }>` and do not throw to callers on normal HTTP failures.
+- Preferred pattern:
+  1. Define a typed hook per slice (for example `useAdminDashboard.ts`).
+  2. Call `apiGet`/`apiPost`/`apiPut`.
+  3. If `data` is null, expose `error` and optionally use local mock fallback for demo resilience.
 
 ## Sprint Schedule
 

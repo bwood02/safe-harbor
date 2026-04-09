@@ -7,11 +7,26 @@ import {
   useSupporterDetail,
   useRecentDonations,
   useDonationsByProgramArea,
+  useDonationsByProgramAreaForSupporter,
   type SupporterListItem,
   type DonationRecord,
 } from '@/hooks/useDonors';
 import { X, Plus, Pencil } from 'lucide-react';
-import { apiPost, apiPut } from '@/lib/api';
+import { apiGet, apiPost, apiPut } from '@/lib/api';
+import {
+  formatInOriginalCurrency,
+  formatPhp,
+  isPhpCurrency,
+  toPhpAmount,
+} from '@/lib/currencyPhp';
+import type {
+  CreateDonationAllocationRequestDto,
+  CreateDonationRequestDto,
+  CreateInKindDonationItemRequestDto,
+  DonorDashboardDonationDto,
+  UpdateDonationRequestDto,
+} from '@/types/donorDashboard';
+import type { DonationFormContextDto } from '@/types/donationFormContext';
 import type {
   CreateSupporterRequestDto,
   SupporterDto,
@@ -92,7 +107,7 @@ const CURRENCY_OPTIONS: Array<{ code: CurrencyCode; symbol: string }> = [
   { code: 'MXN', symbol: 'MXN' },
   { code: 'BRL', symbol: 'BRL' },
   { code: 'ZAR', symbol: 'ZAR' },
-  { code: 'PHP', symbol: 'PHP' },
+  { code: 'PHP', symbol: '₱' },
 ];
 const ALLOCATION_AREAS: AllocationArea[] = [
   'Education',
@@ -133,7 +148,14 @@ interface DonationFormState {
   isRecurring: boolean;
   campaignName: string;
   notes: string;
-  allocationArea: AllocationArea;
+  allocationArea: string;
+  safehouseId: number | null;
+  allocationDate: string;
+  allocationNotes: string;
+  includeAllocation: boolean;
+  /** When set, used as allocation row amount; otherwise estimated gift value is used. */
+  allocationAmount: number | null;
+  referralPostId: number | null;
   itemName: string;
   itemCategory: ItemCategory | null;
   quantity: number | null;
@@ -143,12 +165,133 @@ interface DonationFormState {
   receivedCondition: ReceivedCondition | null;
 }
 
-function formatCurrency(n: number): string {
-  return n.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  });
+const CHANNEL_SOURCES: ChannelSource[] = [
+  'Campaign',
+  'Event',
+  'Direct',
+  'SocialMedia',
+  'PartnerReferral',
+];
+const IMPACT_UNITS: ImpactUnit[] = ['pesos', 'items', 'hours', 'campaigns'];
+const ITEM_CATEGORIES: ItemCategory[] = [
+  'Food',
+  'Supplies',
+  'Clothing',
+  'SchoolMaterials',
+  'Hygiene',
+  'Furniture',
+  'Medical',
+];
+const UNIT_OF_MEASURE_OPTS: UnitOfMeasure[] = ['pcs', 'boxes', 'kg', 'sets', 'packs'];
+const INTENDED_USE_OPTS: IntendedUse[] = ['Meals', 'Education', 'Shelter', 'Hygiene', 'Health'];
+const RECEIVED_CONDITION_OPTS: ReceivedCondition[] = ['New', 'Good', 'Fair'];
+
+function emptyDonationForm(supporterId: number, donationId: number): DonationFormState {
+  return {
+    donationId,
+    supporterId,
+    donationType: 'Monetary',
+    donationDate: '',
+    channelSource: null,
+    currencyCode: 'PHP',
+    amount: null,
+    estimatedValue: null,
+    impactUnit: 'pesos',
+    isRecurring: false,
+    campaignName: '',
+    notes: '',
+    allocationArea: 'Education',
+    safehouseId: null,
+    allocationDate: '',
+    allocationNotes: '',
+    includeAllocation: true,
+    allocationAmount: null,
+    referralPostId: null,
+    itemName: '',
+    itemCategory: null,
+    quantity: null,
+    unitOfMeasure: null,
+    estimatedUnitValue: null,
+    intendedUse: null,
+    receivedCondition: null,
+  };
+}
+
+function donationDtoToFormState(d: DonorDashboardDonationDto): DonationFormState {
+  const firstAlloc = d.donationAllocations[0];
+  const firstItem = d.inKindDonationItems[0];
+  const donationTypes: DonationType[] = ['Monetary', 'InKind', 'Time', 'Skills', 'SocialMedia'];
+  const dt = donationTypes.includes(d.donationType as DonationType)
+    ? (d.donationType as DonationType)
+    : 'Monetary';
+  const ch =
+    d.channelSource && CHANNEL_SOURCES.includes(d.channelSource as ChannelSource)
+      ? (d.channelSource as ChannelSource)
+      : null;
+  const currencies: CurrencyCode[] = CURRENCY_OPTIONS.map((c) => c.code);
+  const cur =
+    d.currencyCode && currencies.includes(d.currencyCode as CurrencyCode)
+      ? (d.currencyCode as CurrencyCode)
+      : 'PHP';
+  const iu = IMPACT_UNITS.includes(d.impactUnit as ImpactUnit)
+    ? (d.impactUnit as ImpactUnit)
+    : 'pesos';
+  const ic =
+    firstItem?.itemCategory && ITEM_CATEGORIES.includes(firstItem.itemCategory as ItemCategory)
+      ? (firstItem.itemCategory as ItemCategory)
+      : 'Food';
+  const uom =
+    firstItem?.unitOfMeasure &&
+    UNIT_OF_MEASURE_OPTS.includes(firstItem.unitOfMeasure as UnitOfMeasure)
+      ? (firstItem.unitOfMeasure as UnitOfMeasure)
+      : 'pcs';
+  const iuItem =
+    firstItem?.intendedUse && INTENDED_USE_OPTS.includes(firstItem.intendedUse as IntendedUse)
+      ? (firstItem.intendedUse as IntendedUse)
+      : 'Meals';
+  const rc =
+    firstItem?.receivedCondition &&
+    RECEIVED_CONDITION_OPTS.includes(firstItem.receivedCondition as ReceivedCondition)
+      ? (firstItem.receivedCondition as ReceivedCondition)
+      : 'New';
+
+  return {
+    donationId: d.donationId,
+    supporterId: d.supporterId,
+    donationType: dt,
+    donationDate: d.donationDate ? d.donationDate.slice(0, 10) : '',
+    channelSource: ch,
+    currencyCode: cur,
+    amount: d.amount,
+    estimatedValue: d.estimatedValue,
+    impactUnit: iu,
+    isRecurring: d.isRecurring,
+    campaignName: d.campaignName ?? '',
+    notes: d.notes ?? '',
+    allocationArea: firstAlloc?.programArea ?? 'Education',
+    safehouseId: firstAlloc ? firstAlloc.safehouseId : null,
+    allocationDate: firstAlloc?.allocationDate ? firstAlloc.allocationDate.slice(0, 10) : '',
+    allocationNotes: firstAlloc?.allocationNotes ?? '',
+    includeAllocation: d.donationAllocations.length > 0,
+    allocationAmount: firstAlloc != null ? firstAlloc.amountAllocated : null,
+    referralPostId: d.referralPostId,
+    itemName: firstItem?.itemName ?? '',
+    itemCategory: dt === 'InKind' ? ic : null,
+    quantity: firstItem?.quantity ?? null,
+    unitOfMeasure: dt === 'InKind' ? uom : null,
+    estimatedUnitValue: firstItem?.estimatedUnitValue ?? null,
+    intendedUse: dt === 'InKind' ? iuItem : null,
+    receivedCondition: dt === 'InKind' ? rc : null,
+  };
+}
+
+/** Donation history: PHP formatted as ₱; other currencies shown in original units. */
+function formatDonationHistoryAmount(
+  value: number,
+  currencyCode: string | null | undefined,
+): string {
+  if (isPhpCurrency(currencyCode)) return formatPhp(value);
+  return formatInOriginalCurrency(value, currencyCode);
 }
 
 function formatDate(iso: string | null): string {
@@ -158,6 +301,27 @@ function formatDate(iso: string | null): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+function mapCreatedDonationDtoToRecord(
+  d: DonorDashboardDonationDto,
+  allocationSummary: string | null,
+): DonationRecord {
+  return {
+    donationId: d.donationId,
+    supporterId: d.supporterId,
+    donationType: d.donationType,
+    donationDate: d.donationDate,
+    isRecurring: d.isRecurring,
+    campaignName: d.campaignName,
+    channelSource: d.channelSource,
+    currencyCode: d.currencyCode,
+    amount: d.amount,
+    estimatedValue: d.estimatedValue,
+    impactUnit: d.impactUnit,
+    notes: d.notes,
+    allocationSummary,
+  };
 }
 
 export default function DonorsContributionsPage() {
@@ -192,32 +356,21 @@ export default function DonorsContributionsPage() {
     acquisitionChannel: 'Website',
     createdAt: '',
   });
-  const [donationForm, setDonationForm] = useState<DonationFormState>({
-    donationId: 0,
-    supporterId: 0,
-    donationType: 'Monetary',
-    donationDate: '',
-    channelSource: null,
-    currencyCode: 'PHP',
-    amount: null,
-    estimatedValue: null,
-    impactUnit: 'pesos',
-    isRecurring: false,
-    campaignName: '',
-    notes: '',
-    allocationArea: 'Education',
-    itemName: '',
-    itemCategory: null,
-    quantity: null,
-    unitOfMeasure: null,
-    estimatedUnitValue: null,
-    intendedUse: null,
-    receivedCondition: null,
-  });
+  const [donationForm, setDonationForm] = useState<DonationFormState>(() =>
+    emptyDonationForm(0, 0),
+  );
   const [donationFormError, setDonationFormError] = useState<string | null>(null);
+  const [donationDetailLoading, setDonationDetailLoading] = useState(false);
+  const [donationFormContext, setDonationFormContext] =
+    useState<DonationFormContextDto | null>(null);
+  const [donationFormContextLoading, setDonationFormContextLoading] = useState(false);
+  const [donationFormContextError, setDonationFormContextError] = useState<string | null>(null);
+  const [isSubmittingDonation, setIsSubmittingDonation] = useState(false);
   const [supporterFormError, setSupporterFormError] = useState<string | null>(null);
   const [isSubmittingSupporter, setIsSubmittingSupporter] = useState(false);
   const [supporterOverrides, setSupporterOverrides] = useState<Record<number, SupporterDto>>({});
+  /** Bumped after donation create/update to refetch list, detail, charts, and KPIs. */
+  const [donationRefreshToken, setDonationRefreshToken] = useState(0);
 
   const supporters = useSupporters({
     page,
@@ -225,10 +378,12 @@ export default function DonorsContributionsPage() {
     type: type || undefined,
     status: status || undefined,
     search: search || undefined,
+    refreshToken: donationRefreshToken,
   });
-  const detail = useSupporterDetail(selectedId);
-  const recent = useRecentDonations(30);
-  const programAreas = useDonationsByProgramArea();
+  const detail = useSupporterDetail(selectedId, donationRefreshToken);
+  const recent = useRecentDonations(30, donationRefreshToken);
+  const programAreas = useDonationsByProgramArea(donationRefreshToken);
+  const programAreasForSelected = useDonationsByProgramAreaForSupporter(selectedId, donationRefreshToken);
 
   const kpis = useMemo(() => {
     const totalSupporters = supporters.data?.total ?? 0;
@@ -237,7 +392,10 @@ export default function DonorsContributionsPage() {
         (s) => s.status === 'Active' && s.donationCount > 0,
       ).length ?? 0;
     const last30 =
-      recent.data?.reduce((sum, d) => sum + (d.estimatedValue ?? 0), 0) ?? 0;
+      recent.data?.reduce(
+        (sum, d) => sum + toPhpAmount(d.estimatedValue ?? 0, d.currencyCode),
+        0,
+      ) ?? 0;
     const topArea = programAreas.data?.[0]?.programArea ?? '—';
     return { totalSupporters, activeMonetary, last30, topArea };
   }, [supporters.data, recent.data, programAreas.data]);
@@ -253,13 +411,55 @@ export default function DonorsContributionsPage() {
 
   useEffect(() => {
     if (detail.data?.donations) {
-      setLocalDonations(detail.data.donations);
+      setLocalDonations((prev) => {
+        const fromServer = detail.data!.donations;
+        const prevById = new Map(prev.map((d) => [d.donationId, d] as const));
+        return fromServer.map((d) => {
+          const old = prevById.get(d.donationId);
+          return {
+            ...d,
+            allocationSummary:
+              old?.allocationSummary ?? d.allocationSummary ?? null,
+          };
+        });
+      });
       setExpandedDonationId(null);
     } else {
       setLocalDonations([]);
       setExpandedDonationId(null);
     }
   }, [detail.data]);
+
+  useEffect(() => {
+    if (!isDonationModalOpen) return;
+    let cancelled = false;
+    setDonationFormContextLoading(true);
+    setDonationFormContextError(null);
+    void (async () => {
+      const res = await apiGet<DonationFormContextDto>('/api/Donations/form-context');
+      if (cancelled) return;
+      setDonationFormContextLoading(false);
+      if (res.data) {
+        setDonationFormContext(res.data);
+        setDonationFormContextError(null);
+      } else {
+        setDonationFormContext(null);
+        setDonationFormContextError(res.error ?? 'Failed to load donation form options.');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isDonationModalOpen]);
+
+  useEffect(() => {
+    if (!isDonationModalOpen || donationModalMode !== 'create') return;
+    if (!donationFormContext?.safehouses.length) return;
+    setDonationForm((prev) => {
+      if (prev.safehouseId != null) return prev;
+      return { ...prev, safehouseId: donationFormContext.safehouses[0].safehouseId };
+    });
+  }, [isDonationModalOpen, donationModalMode, donationFormContext]);
 
   function openCreateSupporterModal() {
     setSupporterForm({
@@ -322,63 +522,39 @@ export default function DonorsContributionsPage() {
   function openCreateDonationModal() {
     if (selectedId == null) return;
     setDonationModalMode('create');
-    setDonationForm({
-      donationId: 0,
-      supporterId: selectedId,
-      donationType: 'Monetary',
-      donationDate: '',
-      channelSource: null,
-      currencyCode: 'PHP',
-      amount: null,
-      estimatedValue: null,
-      impactUnit: 'pesos',
-      isRecurring: false,
-      campaignName: '',
-      notes: '',
-      allocationArea: 'Education',
-      itemName: '',
-      itemCategory: null,
-      quantity: null,
-      unitOfMeasure: null,
-      estimatedUnitValue: null,
-      intendedUse: null,
-      receivedCondition: null,
-    });
+    setDonationForm(emptyDonationForm(selectedId, 0));
     setDonationFormError(null);
+    setDonationDetailLoading(false);
     setIsDonationModalOpen(true);
   }
 
-  function openEditDonationModal(donationId: number) {
-    const d = localDonations.find((x) => x.donationId === donationId);
-    if (!d) return;
+  async function openEditDonationModal(donationId: number) {
+    if (selectedId == null) return;
     setDonationModalMode('edit');
-    setDonationForm({
-      donationId: d.donationId,
-      supporterId: d.supporterId,
-      donationType: (d.donationType as DonationType) ?? 'Monetary',
-      donationDate: d.donationDate ? d.donationDate.slice(0, 10) : '',
-      channelSource: (d.channelSource as ChannelSource | null) ?? null,
-      currencyCode: (d.currencyCode as CurrencyCode | null) ?? 'PHP',
-      amount: d.amount,
-      estimatedValue: d.estimatedValue ?? null,
-      impactUnit: (d.impactUnit as ImpactUnit) ?? 'pesos',
-      isRecurring: d.isRecurring,
-      campaignName: d.campaignName ?? '',
-      notes: d.notes ?? '',
-      allocationArea: 'Education',
-      itemName: '',
-      itemCategory: null,
-      quantity: null,
-      unitOfMeasure: null,
-      estimatedUnitValue: null,
-      intendedUse: null,
-      receivedCondition: null,
-    });
+    setDonationForm(emptyDonationForm(selectedId, donationId));
     setDonationFormError(null);
+    setDonationDetailLoading(true);
     setIsDonationModalOpen(true);
+
+    const res = await apiGet<DonorDashboardDonationDto>(
+      `/api/Donations/${donationId}?supporterId=${selectedId}`,
+    );
+    setDonationDetailLoading(false);
+
+    if (!res.data) {
+      setDonationFormError(res.error ?? 'Failed to load donation.');
+      return;
+    }
+
+    if (res.data.supporterId !== selectedId) {
+      setDonationFormError('This donation does not belong to the selected supporter.');
+      return;
+    }
+
+    setDonationForm(donationDtoToFormState(res.data));
   }
 
-  function submitDonationForm(e: React.FormEvent<HTMLFormElement>) {
+  async function submitDonationForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (!donationForm.donationDate) {
@@ -413,32 +589,118 @@ export default function DonorsContributionsPage() {
       }
     }
 
-    const nextRecord: DonationRecord = {
-      donationId:
-        donationModalMode === 'create'
-          ? Math.max(0, ...localDonations.map((x) => x.donationId)) + 1
-          : donationForm.donationId,
+    const estimatedValue =
+      donationForm.donationType === 'Monetary'
+        ? donationForm.amount ?? 0
+        : donationForm.estimatedValue ?? 0;
+
+    if (donationForm.includeAllocation) {
+      if (!donationFormContext?.safehouses.length) {
+        setDonationFormError(
+          'No safehouses are available. Uncheck “Allocate to a safehouse” or add safehouses in the database.',
+        );
+        return;
+      }
+      if (donationForm.safehouseId == null || donationForm.safehouseId <= 0) {
+        setDonationFormError('Select a safehouse for this allocation.');
+        return;
+      }
+      if (!donationForm.allocationArea.trim()) {
+        setDonationFormError('Program area is required for an allocation.');
+        return;
+      }
+    }
+
+    const allocationDateStr =
+      donationForm.allocationDate.trim() || donationForm.donationDate;
+
+    if (donationForm.includeAllocation && !allocationDateStr) {
+      setDonationFormError('Allocation date is required (or leave blank to use the donation date).');
+      return;
+    }
+
+    const donationAllocations: CreateDonationAllocationRequestDto[] =
+      donationForm.includeAllocation && donationForm.safehouseId != null
+        ? [
+            {
+              safehouseId: donationForm.safehouseId,
+              programArea: donationForm.allocationArea.trim(),
+              amountAllocated: donationForm.allocationAmount ?? estimatedValue,
+              allocationDate: allocationDateStr,
+              allocationNotes: donationForm.allocationNotes.trim() || null,
+            },
+          ]
+        : [];
+
+    const inKindDonationItems: CreateInKindDonationItemRequestDto[] =
+      donationForm.donationType === 'InKind'
+        ? [
+            {
+              itemName: donationForm.itemName.trim(),
+              itemCategory: donationForm.itemCategory ?? '',
+              quantity: donationForm.quantity ?? 0,
+              unitOfMeasure: donationForm.unitOfMeasure ?? '',
+              estimatedUnitValue: donationForm.estimatedUnitValue ?? 0,
+              intendedUse: donationForm.intendedUse ?? '',
+              receivedCondition: donationForm.receivedCondition ?? '',
+            },
+          ]
+        : [];
+
+    const body: CreateDonationRequestDto = {
       supporterId: donationForm.supporterId,
       donationType: donationForm.donationType,
       donationDate: donationForm.donationDate,
       isRecurring: donationForm.isRecurring,
-      campaignName: donationForm.campaignName || null,
+      campaignName: donationForm.campaignName.trim() || null,
       channelSource: donationForm.channelSource,
       currencyCode: donationForm.donationType === 'Monetary' ? donationForm.currencyCode : null,
       amount: donationForm.donationType === 'Monetary' ? donationForm.amount : null,
-      estimatedValue:
-        donationForm.donationType === 'Monetary'
-          ? donationForm.amount ?? 0
-          : donationForm.estimatedValue ?? 0,
+      estimatedValue,
       impactUnit: donationForm.impactUnit,
-      notes: donationForm.notes || null,
+      notes: donationForm.notes.trim() || null,
+      referralPostId: donationForm.referralPostId,
+      donationAllocations,
+      inKindDonationItems,
     };
 
+    setIsSubmittingDonation(true);
+    setDonationFormError(null);
+    const res =
+      donationModalMode === 'create'
+        ? await apiPost<CreateDonationRequestDto, DonorDashboardDonationDto>(
+            '/api/DonorDashboard/CreateDonation',
+            body,
+          )
+        : await apiPut<UpdateDonationRequestDto, DonorDashboardDonationDto>(
+            `/api/Donations/${donationForm.donationId}`,
+            body,
+          );
+    setIsSubmittingDonation(false);
+
+    if (!res.data) {
+      setDonationFormError(
+        res.error ??
+          (donationModalMode === 'create' ? 'Failed to create donation.' : 'Failed to update donation.'),
+      );
+      return;
+    }
+
+    const shMap = new Map(
+      (donationFormContext?.safehouses ?? []).map((s) => [s.safehouseId, s.name] as const),
+    );
+    const alloc = res.data.donationAllocations[0];
+    const allocationSummary = alloc
+      ? `${alloc.programArea} · ${shMap.get(alloc.safehouseId) ?? `Safehouse #${alloc.safehouseId}`}`
+      : null;
+
+    const nextRecord = mapCreatedDonationDtoToRecord(res.data, allocationSummary);
     setLocalDonations((prev) =>
       donationModalMode === 'create'
         ? [nextRecord, ...prev]
         : prev.map((d) => (d.donationId === nextRecord.donationId ? nextRecord : d)),
     );
+    setDonationRefreshToken((t) => t + 1);
     setDonationFormError(null);
     setIsDonationModalOpen(false);
   }
@@ -521,7 +783,7 @@ export default function DonorsContributionsPage() {
             label="Active monetary donors"
             value={String(kpis.activeMonetary)}
           />
-          <KpiCard label="Last 30 days" value={formatCurrency(kpis.last30)} />
+          <KpiCard label="Last 30 days (PHP)" value={formatPhp(kpis.last30)} />
           <KpiCard label="Top program area" value={kpis.topArea} />
         </section>
 
@@ -586,7 +848,7 @@ export default function DonorsContributionsPage() {
                     <th className="text-left px-4 py-3">Type</th>
                     <th className="text-left px-4 py-3">Region</th>
                     <th className="text-right px-4 py-3">Gifts</th>
-                    <th className="text-right px-4 py-3">Total</th>
+                    <th className="text-right px-4 py-3">Total (PHP)</th>
                     <th className="text-left px-4 py-3">Status</th>
                   </tr>
                 </thead>
@@ -629,7 +891,7 @@ export default function DonorsContributionsPage() {
                           {s.donationCount}
                         </td>
                         <td className="px-4 py-3 text-right text-foreground">
-                          {formatCurrency(s.totalGiven)}
+                          {formatPhp(s.totalGiven)}
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -772,7 +1034,12 @@ export default function DonorsContributionsPage() {
                             >
                               <div className="flex justify-between text-foreground">
                                 <span>{d.donationType}</span>
-                                <span>{formatCurrency(d.estimatedValue)}</span>
+                                <span>
+                                  {formatDonationHistoryAmount(
+                                    d.estimatedValue,
+                                    d.currencyCode,
+                                  )}
+                                </span>
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {formatDate(d.donationDate)}
@@ -781,7 +1048,8 @@ export default function DonorsContributionsPage() {
                               </div>
                             </button>
                             <button
-                              onClick={() => openEditDonationModal(d.donationId)}
+                              type="button"
+                              onClick={() => void openEditDonationModal(d.donationId)}
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-primary text-primary text-xs font-medium hover:bg-primary hover:text-white transition-colors shrink-0"
                             >
                               <Pencil className="w-3 h-3" />
@@ -800,9 +1068,19 @@ export default function DonorsContributionsPage() {
                                 <MiniRow label="Currency" value={d.currencyCode || '—'} />
                                 <MiniRow
                                   label="Amount"
-                                  value={d.amount != null ? formatCurrency(d.amount) : '—'}
+                                  value={
+                                    d.amount != null
+                                      ? formatDonationHistoryAmount(d.amount, d.currencyCode)
+                                      : '—'
+                                  }
                                 />
                                 <MiniRow label="Impact Unit" value={d.impactUnit || '—'} />
+                              </div>
+                              <div className="text-xs">
+                                <MiniRow
+                                  label="Allocation"
+                                  value={d.allocationSummary ?? '—'}
+                                />
                               </div>
                               <div className="text-xs">
                                 <div className="text-muted-foreground">Notes</div>
@@ -815,7 +1093,7 @@ export default function DonorsContributionsPage() {
                     })}
                   </ul>
                   <div className="text-xs text-muted-foreground">
-                    Frontend-only editing UI for now.
+                    Donations and allocations load from the server; create and save update the database.
                   </div>
                 </div>
               </div>
@@ -825,24 +1103,65 @@ export default function DonorsContributionsPage() {
 
         {/* Program area breakdown */}
         <section className="mt-8 bg-card border border-border rounded-lg p-5">
-          <h2 className="font-serif text-xl text-foreground mb-4">
-            Allocations by program area
-          </h2>
+          <div className="flex items-baseline justify-between mb-1 gap-3 flex-wrap">
+            <h2 className="font-serif text-xl text-foreground">
+              Allocations by program area
+              {selectedSupporter && (
+                <span className="text-base text-muted-foreground font-sans font-normal">
+                  {' — '}
+                  {selectedSupporter.displayName}
+                </span>
+              )}
+            </h2>
+            {selectedSupporter && (
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="text-xs px-3 py-1 rounded-full border border-border text-foreground hover:bg-background"
+              >
+                Show all donors
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            {selectedSupporter
+              ? "This donor's allocations overlaid on the organization-wide totals (faded). Bars share the same scale."
+              : 'Amounts shown in PHP using the same reference conversion rates as supporter totals (donation currency → PHP).'}
+          </p>
           <div className="space-y-2">
             {programAreas.data?.map((pa) => {
               const max = programAreas.data?.[0]?.total ?? 1;
-              const pct = Math.round((pa.total / max) * 100);
+              const totalPct = Math.round((pa.total / max) * 100);
+              const donorAmount = selectedSupporter
+                ? programAreasForSelected.data?.find((d) => d.programArea === pa.programArea)?.total ?? 0
+                : 0;
+              const donorPct = selectedSupporter ? Math.round((donorAmount / max) * 100) : 0;
               return (
                 <div key={pa.programArea}>
                   <div className="flex justify-between text-sm text-foreground">
                     <span>{pa.programArea}</span>
-                    <span>{formatCurrency(pa.total)}</span>
+                    <span>
+                      {selectedSupporter ? (
+                        <>
+                          <span className="text-foreground">{formatPhp(donorAmount)}</span>
+                          <span className="text-muted-foreground"> / {formatPhp(pa.total)}</span>
+                        </>
+                      ) : (
+                        formatPhp(pa.total)
+                      )}
+                    </span>
                   </div>
-                  <div className="h-2 rounded bg-muted overflow-hidden">
+                  <div className="relative h-2 rounded bg-muted overflow-hidden">
                     <div
-                      className="h-full bg-primary"
-                      style={{ width: `${pct}%` }}
+                      className={`absolute inset-y-0 left-0 h-full bg-primary transition-opacity ${selectedSupporter ? 'opacity-20' : 'opacity-100'}`}
+                      style={{ width: `${totalPct}%` }}
                     />
+                    {selectedSupporter && (
+                      <div
+                        className="absolute inset-y-0 left-0 h-full bg-primary"
+                        style={{ width: `${donorPct}%` }}
+                      />
+                    )}
                   </div>
                 </div>
               );
@@ -1074,19 +1393,31 @@ export default function DonorsContributionsPage() {
         <div className="fixed inset-0 z-50 bg-foreground/35 backdrop-blur-[2px] flex items-center justify-center p-4">
           <div className="w-full max-w-3xl max-h-[90svh] overflow-y-auto rounded-3xl border border-border bg-white shadow-xl">
             <div className="sticky top-0 bg-white border-b border-border px-6 py-4 flex items-center justify-between">
-              <h3 className="text-2xl font-serif text-foreground">
-                {donationModalMode === 'create' ? 'Add Donation' : 'Edit Donation'}
-              </h3>
+              <div>
+                <h3 className="text-2xl font-serif text-foreground">
+                  {donationModalMode === 'create' ? 'Add Donation' : 'Edit Donation'}
+                </h3>
+                {donationDetailLoading && (
+                  <p className="text-sm text-muted-foreground mt-1">Loading donation from server…</p>
+                )}
+              </div>
               <button
-                onClick={() => setIsDonationModalOpen(false)}
+                type="button"
+                onClick={() => {
+                  setIsDonationModalOpen(false);
+                  setDonationDetailLoading(false);
+                }}
                 className="p-2 rounded-full border border-border hover:bg-background"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={submitDonationForm} className="p-6 grid sm:grid-cols-2 gap-4">
-              <input type="hidden" value={donationForm.supporterId} />
+            <form onSubmit={submitDonationForm} className="p-6">
+              <div
+                className={`grid sm:grid-cols-2 gap-4 ${donationDetailLoading ? 'pointer-events-none opacity-50' : ''}`}
+              >
+                <input type="hidden" value={donationForm.supporterId} />
 
               <Field label="Donation Type *">
                 <select
@@ -1378,49 +1709,140 @@ export default function DonorsContributionsPage() {
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background"
                 />
               </Field>
-              <Field label="Allocation Area *">
-                <select
-                  required
-                  value={donationForm.allocationArea}
-                  onChange={(e) =>
-                    setDonationForm((p) => ({
-                      ...p,
-                      allocationArea: e.target.value as AllocationArea,
-                    }))
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background"
-                >
-                  {ALLOCATION_AREAS.map((area) => (
-                    <option key={area}>{area}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Notes" className="sm:col-span-2">
-                <textarea
-                  rows={3}
-                  value={donationForm.notes}
-                  onChange={(e) => setDonationForm((p) => ({ ...p, notes: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background"
-                />
-              </Field>
-              {donationFormError && (
-                <p className="sm:col-span-2 text-sm font-medium text-destructive">
-                  {donationFormError}
-                </p>
+
+              {!donationDetailLoading && (
+                <Field label="" className="sm:col-span-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={donationForm.includeAllocation}
+                      onChange={(e) =>
+                        setDonationForm((p) => ({
+                          ...p,
+                          includeAllocation: e.target.checked,
+                        }))
+                      }
+                      className="rounded border-border"
+                    />
+                    <span className="text-sm text-foreground">
+                      Allocate this gift to a safehouse (donation_allocation row)
+                    </span>
+                  </label>
+                </Field>
               )}
-              <div className="sm:col-span-2 flex justify-end gap-3 pt-2">
+
+              {!donationDetailLoading && donationForm.includeAllocation && (
+                <>
+                  {donationFormContextLoading && (
+                    <p className="sm:col-span-2 text-sm text-muted-foreground">
+                      Loading safehouses…
+                    </p>
+                  )}
+                  {donationFormContextError && (
+                    <p className="sm:col-span-2 text-sm text-destructive">
+                      {donationFormContextError}
+                    </p>
+                  )}
+                  <Field label="Safehouse *">
+                    <select
+                      value={donationForm.safehouseId ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value ? Number(e.target.value) : null;
+                        setDonationForm((p) => ({ ...p, safehouseId: v }));
+                      }}
+                      disabled={
+                        donationFormContextLoading || !donationFormContext?.safehouses.length
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background disabled:opacity-60"
+                    >
+                      <option value="">Select safehouse…</option>
+                      {donationFormContext?.safehouses.map((s) => (
+                        <option key={s.safehouseId} value={s.safehouseId}>
+                          {s.name} — {s.city}, {s.region} ({s.status})
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Program area *">
+                    <select
+                      required
+                      value={donationForm.allocationArea}
+                      onChange={(e) =>
+                        setDonationForm((p) => ({ ...p, allocationArea: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background"
+                    >
+                      {(donationFormContext?.programAreas?.length
+                        ? donationFormContext.programAreas
+                        : ALLOCATION_AREAS
+                      ).map((area) => (
+                        <option key={area} value={area}>
+                          {area}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Allocation date">
+                    <input
+                      type="date"
+                      value={donationForm.allocationDate}
+                      onChange={(e) =>
+                        setDonationForm((p) => ({ ...p, allocationDate: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave blank to use the donation date.
+                    </p>
+                  </Field>
+                  <Field label="Allocation notes" className="sm:col-span-2">
+                    <textarea
+                      rows={2}
+                      value={donationForm.allocationNotes}
+                      onChange={(e) =>
+                        setDonationForm((p) => ({ ...p, allocationNotes: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background"
+                    />
+                  </Field>
+                </>
+              )}
+
+                <Field label="Notes" className="sm:col-span-2">
+                  <textarea
+                    rows={3}
+                    value={donationForm.notes}
+                    onChange={(e) => setDonationForm((p) => ({ ...p, notes: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-background"
+                  />
+                </Field>
+              </div>
+              {donationFormError && (
+                <p className="text-sm font-medium text-destructive mt-2">{donationFormError}</p>
+              )}
+              <div className="flex justify-end gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setIsDonationModalOpen(false)}
+                  onClick={() => {
+                    setIsDonationModalOpen(false);
+                    setDonationDetailLoading(false);
+                  }}
                   className="px-5 py-2.5 rounded-full border border-border text-foreground"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-full bg-primary text-white"
+                  disabled={isSubmittingDonation || donationDetailLoading}
+                  className="px-5 py-2.5 rounded-full bg-primary text-white disabled:opacity-60"
                 >
-                  {donationModalMode === 'create' ? 'Add Donation' : 'Save Donation'}
+                  {donationModalMode === 'create'
+                    ? isSubmittingDonation
+                      ? 'Saving…'
+                      : 'Add Donation'
+                    : isSubmittingDonation
+                      ? 'Saving…'
+                      : 'Save Donation'}
                 </button>
               </div>
             </form>

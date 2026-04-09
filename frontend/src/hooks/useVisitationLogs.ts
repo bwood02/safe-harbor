@@ -1,0 +1,148 @@
+import { useCallback, useEffect, useState } from 'react';
+import { apiGet, apiPost, apiPut, API_BASE_URL } from '@/lib/api';
+import type { HomeVisit, HomeVisitInput, CaseConference } from '@/types/visitationLogs';
+
+interface QueryState<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+}
+
+const mockVisits = (residentId: number): HomeVisit[] => [
+  {
+    visitationId: residentId * 10 + 1,
+    residentId,
+    visitDate: '2026-03-15',
+    socialWorker: 'Maria Santos',
+    visitType: 'Follow-up',
+    locationVisited: 'Family home, Quezon City',
+    familyMembersPresent: 'Mother, grandmother',
+    purpose: 'Reintegration readiness check',
+    observations: 'Home environment safe; mother engaged.',
+    familyCooperationLevel: 'High',
+    safetyConcernsNoted: false,
+    followUpNeeded: true,
+    followUpNotes: 'Next visit in 30 days',
+    visitOutcome: 'Positive',
+  },
+  {
+    visitationId: residentId * 10 + 2,
+    residentId,
+    visitDate: '2026-02-10',
+    socialWorker: 'Jasmine Cruz',
+    visitType: 'Initial',
+    locationVisited: 'Family home, Quezon City',
+    familyMembersPresent: 'Mother',
+    purpose: 'Baseline family assessment',
+    observations: 'Some tension observed; follow up recommended.',
+    familyCooperationLevel: 'Moderate',
+    safetyConcernsNoted: false,
+    followUpNeeded: true,
+    followUpNotes: '',
+    visitOutcome: 'Needs Follow-up',
+  },
+];
+
+const mockConferences: CaseConference[] = [
+  {
+    planId: 1,
+    residentId: 1,
+    caseConferenceDate: '2026-03-01',
+    planCategory: 'Education',
+    planDescription: 'Reinstate schooling with tutoring support.',
+    servicesProvided: 'Teaching',
+    status: 'In Progress',
+  },
+];
+
+export function useVisits(residentId: number | null): QueryState<HomeVisit[]> & { refetch: () => void } {
+  const [state, setState] = useState<QueryState<HomeVisit[]>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (residentId == null) {
+      setState({ data: [], loading: false, error: null });
+      return;
+    }
+    let cancelled = false;
+    setState({ data: null, loading: true, error: null });
+    apiGet<HomeVisit[]>(`/api/VisitationLogs/visits?residentId=${residentId}`).then((res) => {
+      if (cancelled) return;
+      if (res.data) {
+        setState({ data: res.data, loading: false, error: null });
+      } else {
+        setState({ data: mockVisits(residentId), loading: false, error: res.error });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [residentId, tick]);
+
+  return { ...state, refetch: () => setTick((t) => t + 1) };
+}
+
+export function useCaseConferences(residentId: number | null): QueryState<CaseConference[]> {
+  const [state, setState] = useState<QueryState<CaseConference[]>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    if (residentId == null) {
+      setState({ data: [], loading: false, error: null });
+      return;
+    }
+    let cancelled = false;
+    setState({ data: null, loading: true, error: null });
+    apiGet<CaseConference[]>(`/api/VisitationLogs/case-conferences?residentId=${residentId}`).then(
+      (res) => {
+        if (cancelled) return;
+        if (res.data) {
+          setState({ data: res.data, loading: false, error: null });
+        } else {
+          setState({
+            data: mockConferences.filter((c) => c.residentId === residentId),
+            loading: false,
+            error: res.error,
+          });
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [residentId]);
+
+  return state;
+}
+
+export function useVisitMutations() {
+  const create = useCallback(async (input: HomeVisitInput) => {
+    return apiPost<HomeVisitInput, HomeVisit>('/api/VisitationLogs/visits', input);
+  }, []);
+
+  const update = useCallback(async (id: number, input: HomeVisitInput) => {
+    return apiPut<HomeVisitInput, HomeVisit>(`/api/VisitationLogs/visits/${id}`, input);
+  }, []);
+
+  const remove = useCallback(async (id: number) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/VisitationLogs/visits/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) return { data: null, error: `HTTP ${res.status}` };
+      return { data: true, error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Network error';
+      return { data: null, error: message };
+    }
+  }, []);
+
+  return { create, update, remove };
+}

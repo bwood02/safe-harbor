@@ -41,6 +41,9 @@ type AllocationArea =
   | 'Maintenance'
   | 'Outreach';
 
+/** Shown in the table/snapshot; donors do not set allocation — staff adds rows later. */
+type DisplayAllocationArea = AllocationArea | 'Unallocated';
+
 interface DonationRow {
   donation_id: number;
   supporter_id: number;
@@ -54,7 +57,7 @@ interface DonationRow {
   is_recurring: boolean;
   campaign_name: string | null;
   notes: string | null;
-  allocation_area: AllocationArea;
+  allocation_area: DisplayAllocationArea;
   item_name: string | null;
   item_category: ItemCategory | null;
   quantity: number | null;
@@ -72,6 +75,8 @@ const ALLOCATION_AREAS: AllocationArea[] = [
   'Maintenance',
   'Outreach',
 ];
+
+const SNAPSHOT_AREAS: DisplayAllocationArea[] = [...ALLOCATION_AREAS, 'Unallocated'];
 
 const CURRENCY_OPTIONS: Array<{ code: CurrencyCode; symbol: string }> = [
   { code: 'USD', symbol: '$' },
@@ -122,7 +127,7 @@ function emptyDonationForm(): DonationRow {
     is_recurring: false,
     campaign_name: null,
     notes: null,
-    allocation_area: 'Education',
+    allocation_area: 'Unallocated',
     item_name: null,
     item_category: null,
     quantity: null,
@@ -136,6 +141,12 @@ function emptyDonationForm(): DonationRow {
 function mapDonationDtoToRow(d: DonorDashboardDonationDto): DonationRow {
   const firstAllocation = d.donationAllocations[0]?.programArea as AllocationArea | undefined;
   const firstItem = d.inKindDonationItems[0];
+  const resolvedAllocation: DisplayAllocationArea =
+    !d.donationAllocations?.length
+      ? 'Unallocated'
+      : firstAllocation && ALLOCATION_AREAS.includes(firstAllocation)
+        ? firstAllocation
+        : 'Unallocated';
   return {
     donation_id: d.donationId,
     supporter_id: d.supporterId,
@@ -149,8 +160,7 @@ function mapDonationDtoToRow(d: DonorDashboardDonationDto): DonationRow {
     is_recurring: d.isRecurring,
     campaign_name: d.campaignName,
     notes: d.notes,
-    allocation_area:
-      firstAllocation && ALLOCATION_AREAS.includes(firstAllocation) ? firstAllocation : 'Operations',
+    allocation_area: resolvedAllocation,
     item_name: firstItem?.itemName ?? null,
     item_category: (firstItem?.itemCategory as ItemCategory) ?? null,
     quantity: firstItem?.quantity ?? null,
@@ -168,7 +178,7 @@ export default function DonorDashboardPage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | DonationType>('All');
   const [recurringFilter, setRecurringFilter] = useState<'All' | 'Recurring' | 'One-time'>('All');
-  const [allocationFilter, setAllocationFilter] = useState<'All' | AllocationArea>('All');
+  const [allocationFilter, setAllocationFilter] = useState<'All' | DisplayAllocationArea>('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDonation, setSelectedDonation] = useState<DonationRow | null>(null);
   const [form, setForm] = useState<DonationRow>(emptyDonationForm());
@@ -228,7 +238,7 @@ export default function DonorDashboardPage() {
 
   const allocationPercentages = useMemo(() => {
     const total = donations.length;
-    return ALLOCATION_AREAS.map((area) => {
+    return SNAPSHOT_AREAS.map((area) => {
       const count = donations.filter((d) => d.allocation_area === area).length;
       const pct = total > 0 ? Math.round((count / total) * 100) : 0;
       return { area, pct, count };
@@ -296,18 +306,7 @@ export default function DonorDashboardPage() {
       impactUnit: form.impact_unit,
       notes: form.notes?.trim() || null,
       referralPostId: null,
-      donationAllocations: [
-        {
-          safehouseId: 1,
-          programArea: form.allocation_area,
-          amountAllocated:
-            form.donation_type === 'Monetary'
-              ? form.amount ?? 0
-              : form.estimated_value ?? 0,
-          allocationDate: form.donation_date,
-          allocationNotes: form.notes?.trim() || null,
-        },
-      ],
+      donationAllocations: [],
       inKindDonationItems:
         form.donation_type === 'InKind'
           ? [
@@ -353,7 +352,7 @@ export default function DonorDashboardPage() {
             </p>
             <h1 className="text-4xl lg:text-5xl font-serif text-foreground mb-4">My Donations</h1>
             <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
-              Track your contributions and how they are allocated across Safe Harbor programs.
+              Track your contributions. Program allocation is set by staff after your gift is recorded.
             </p>
           </div>
           <button
@@ -372,7 +371,10 @@ export default function DonorDashboardPage() {
         )}
 
         <section className="rounded-2xl border border-border bg-white shadow-sm p-5 md:p-6 mb-8">
-          <h2 className="text-xl font-serif text-foreground mb-4">Allocation Snapshot</h2>
+          <h2 className="text-xl font-serif text-foreground mb-1">Allocation Snapshot</h2>
+          <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
+            Donations you submit appear as &quot;Unallocated&quot; until staff assign them to program areas.
+          </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {allocationPercentages.map(({ area, pct, count }) => (
               <article key={area} className="rounded-xl border border-border bg-background p-4">
@@ -436,13 +438,16 @@ export default function DonorDashboardPage() {
                 <HandCoins className="w-4 h-4 text-primary" />
                 <select
                   value={allocationFilter}
-                  onChange={(e) => setAllocationFilter(e.target.value as 'All' | AllocationArea)}
+                  onChange={(e) =>
+                    setAllocationFilter(e.target.value as 'All' | DisplayAllocationArea)
+                  }
                   className="bg-transparent outline-none w-full"
                 >
                   <option>All</option>
                   {ALLOCATION_AREAS.map((area) => (
                     <option key={area}>{area}</option>
                   ))}
+                  <option>Unallocated</option>
                 </select>
               </label>
             </div>
@@ -837,21 +842,10 @@ export default function DonorDashboardPage() {
                 />
               </label>
 
-              <label className="space-y-2">
-                <span className="text-sm font-semibold text-foreground">Allocation Area *</span>
-                <select
-                  required
-                  value={form.allocation_area}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, allocation_area: e.target.value as AllocationArea }))
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background"
-                >
-                  {ALLOCATION_AREAS.map((area) => (
-                    <option key={area}>{area}</option>
-                  ))}
-                </select>
-              </label>
+              <p className="sm:col-span-2 text-sm text-muted-foreground rounded-xl border border-border bg-background px-3 py-2">
+                Program allocation is handled by Safe Harbor staff after your donation is received. You do
+                not need to choose a program area here.
+              </p>
 
               <label className="space-y-2 sm:col-span-2">
                 <span className="text-sm font-semibold text-foreground">Notes</span>

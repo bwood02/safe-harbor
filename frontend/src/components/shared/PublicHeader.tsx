@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'wouter';
+import { Link, useLocation } from 'react-router-dom';
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -6,12 +6,12 @@ const navLinks = [
 ];
 
 export default function PublicHeader() {
-  const [location] = useLocation();
+  const { pathname } = useLocation();
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/60">
       <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-        <Link href="/">
+        <Link to="/">
           <span className="font-serif italic font-medium text-foreground text-2xl tracking-wide cursor-pointer select-none">
             Safe Harbor
           </span>
@@ -19,10 +19,10 @@ export default function PublicHeader() {
         <nav aria-label="Public navigation">
           <ul className="flex items-center gap-6">
             {navLinks.map(({ to, label }) => {
-              const isActive = location === to;
+              const isActive = pathname === to;
               return (
                 <li key={to}>
-                  <Link href={to}>
+                  <Link to={to}>
                     <span
                       className={`
                         text-lg font-medium cursor-pointer transition-colors relative py-1
@@ -42,7 +42,7 @@ export default function PublicHeader() {
               );
             })}
             <li>
-              <Link href="/admin">
+              <Link to="/admin">
                 <span className="text-base font-medium px-4 py-2 rounded-full border border-foreground/20 text-foreground hover:bg-foreground/5 transition-colors cursor-pointer">
                   Staff Login
                 </span>

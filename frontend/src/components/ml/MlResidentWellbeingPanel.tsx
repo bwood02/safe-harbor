@@ -1,4 +1,4 @@
-import { Link } from 'wouter';
+import { Link } from 'react-router-dom';
 import { useResidentWellbeingScores } from '@/hooks/useResidentWellbeingScores';
 
 export default function MlResidentWellbeingPanel() {
@@ -19,7 +19,7 @@ export default function MlResidentWellbeingPanel() {
             ).
           </p>
         </div>
-        <Link href="/admin/ml-integration">
+        <Link to="/admin/ml-integration">
           <span className="text-sm font-medium text-primary cursor-pointer hover:underline">
             View all ML integrations
           </span>

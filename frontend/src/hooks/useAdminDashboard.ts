@@ -14,6 +14,8 @@ export interface AdminKpis {
   recentDonationsAmount: number;
   upcomingReviews: number;
   avgProgress: number;
+  avgHealthScore: number;
+  incidentCount: number;
 }
 
 export interface AdminSafehouse {
@@ -23,6 +25,9 @@ export interface AdminSafehouse {
   occupied: number;
   capacity: number;
   pct: number;
+  avgHealthScore: number;
+  avgEducationProgress: number;
+  incidentCount: number;
 }
 
 export interface WeeklyActivityDay {
@@ -52,17 +57,31 @@ export interface UpcomingReview {
 // ---- Mock fallbacks ----
 
 const MOCK_KPIS: AdminKpis = {
-  activeResidents: 86,
+  activeResidents: 30,
   recentDonationsAmount: 18450,
   upcomingReviews: 12,
   avgProgress: 74,
+  avgHealthScore: 4.12,
+  incidentCount: 4,
 };
 
 const MOCK_SAFEHOUSES: AdminSafehouse[] = [
-  { safehouseId: 1, name: 'Cebu Haven', status: 'ACTIVE', occupied: 14, capacity: 16, pct: 88 },
-  { safehouseId: 2, name: 'Davao Shelter', status: 'ACTIVE', occupied: 11, capacity: 14, pct: 79 },
-  { safehouseId: 3, name: 'Manila Harbor House', status: 'ACTIVE', occupied: 20, capacity: 20, pct: 100 },
-  { safehouseId: 4, name: 'Iloilo Safe Home', status: 'ACTIVE', occupied: 9, capacity: 12, pct: 75 },
+  {
+    safehouseId: 1, name: 'Cebu Haven', status: 'ACTIVE', occupied: 14, capacity: 16, pct: 88,
+    avgHealthScore: 4.25, avgEducationProgress: 74, incidentCount: 0,
+  },
+  {
+    safehouseId: 2, name: 'Davao Shelter', status: 'ACTIVE', occupied: 11, capacity: 14, pct: 79,
+    avgHealthScore: 3.94, avgEducationProgress: 70, incidentCount: 2,
+  },
+  {
+    safehouseId: 3, name: 'Manila Harbor House', status: 'ACTIVE', occupied: 20, capacity: 20, pct: 100,
+    avgHealthScore: 4.33, avgEducationProgress: 78, incidentCount: 0,
+  },
+  {
+    safehouseId: 4, name: 'Iloilo Safe Home', status: 'ACTIVE', occupied: 9, capacity: 12, pct: 75,
+    avgHealthScore: 4.05, avgEducationProgress: 73, incidentCount: 1,
+  },
 ];
 
 const MOCK_WEEKLY: WeeklyActivityDay[] = (() => {

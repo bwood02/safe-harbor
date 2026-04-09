@@ -53,6 +53,8 @@ export interface DonationRecord {
   estimatedValue: number;
   impactUnit: string;
   notes: string | null;
+  /** Present when loaded from CreateDonation response or enriched detail. */
+  allocationSummary?: string | null;
 }
 
 export interface RecentDonation {
@@ -78,6 +80,8 @@ export interface SupporterFilters {
   type?: string;
   status?: string;
   search?: string;
+  /** Increment to refetch list after server mutations (e.g. donations). */
+  refreshToken?: number;
 }
 
 // ---- Mock fallbacks ----
@@ -167,7 +171,7 @@ interface QueryState<T> {
 }
 
 export function useSupporters(filters: SupporterFilters = {}): QueryState<SupportersPage> {
-  const { page = 1, pageSize = 50, type, status, search } = filters;
+  const { page = 1, pageSize = 50, type, status, search, refreshToken = 0 } = filters;
   const [state, setState] = useState<QueryState<SupportersPage>>({
     data: null,
     loading: true,
@@ -215,12 +219,15 @@ export function useSupporters(filters: SupporterFilters = {}): QueryState<Suppor
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, type, status, search]);
+  }, [page, pageSize, type, status, search, refreshToken]);
 
   return state;
 }
 
-export function useSupporterDetail(id: number | null): QueryState<{
+export function useSupporterDetail(
+  id: number | null,
+  refreshToken = 0,
+): QueryState<{
   supporter: SupporterDetail;
   donations: DonationRecord[];
 }> {
@@ -234,7 +241,15 @@ export function useSupporterDetail(id: number | null): QueryState<{
       return;
     }
     let cancelled = false;
-    setState({ data: null, loading: true, error: null });
+    setState((prev) => {
+      const keepData =
+        prev.data?.supporter.supporterId === id ? prev.data : undefined;
+      return {
+        data: keepData ?? null,
+        loading: true,
+        error: null,
+      };
+    });
 
     Promise.all([
       apiGet<SupporterDetail>(`/api/Supporters/${id}`),
@@ -268,12 +283,12 @@ export function useSupporterDetail(id: number | null): QueryState<{
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, refreshToken]);
 
   return state;
 }
 
-export function useRecentDonations(days = 30): QueryState<RecentDonation[]> {
+export function useRecentDonations(days = 30, refreshToken = 0): QueryState<RecentDonation[]> {
   const [state, setState] = useState<QueryState<RecentDonation[]>>({
     data: null,
     loading: true,
@@ -293,12 +308,12 @@ export function useRecentDonations(days = 30): QueryState<RecentDonation[]> {
     return () => {
       cancelled = true;
     };
-  }, [days]);
+  }, [days, refreshToken]);
 
   return state;
 }
 
-export function useDonationsByProgramArea(): QueryState<ProgramAreaTotal[]> {
+export function useDonationsByProgramArea(refreshToken = 0): QueryState<ProgramAreaTotal[]> {
   const [state, setState] = useState<QueryState<ProgramAreaTotal[]>>({
     data: null,
     loading: true,
@@ -318,7 +333,40 @@ export function useDonationsByProgramArea(): QueryState<ProgramAreaTotal[]> {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshToken]);
+
+  return state;
+}
+
+export function useDonationsByProgramAreaForSupporter(
+  supporterId: number | null,
+  refreshToken = 0
+): QueryState<ProgramAreaTotal[]> {
+  const [state, setState] = useState<QueryState<ProgramAreaTotal[]>>({
+    data: null,
+    loading: false,
+    error: null,
+  });
+
+  useEffect(() => {
+    if (supporterId == null) {
+      setState({ data: null, loading: false, error: null });
+      return;
+    }
+    let cancelled = false;
+    setState((s) => ({ ...s, loading: true }));
+    apiGet<ProgramAreaTotal[]>(`/api/Donations/by-program-area/supporter/${supporterId}`).then((res) => {
+      if (cancelled) return;
+      setState({
+        data: res.data ?? [],
+        loading: false,
+        error: res.error,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [supporterId, refreshToken]);
 
   return state;
 }

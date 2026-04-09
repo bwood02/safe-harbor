@@ -1,4 +1,4 @@
-import { Link } from 'wouter';
+import { Link } from 'react-router-dom';
 import { useMlDeploymentStatus } from '@/hooks/useMlDeploymentStatus';
 
 export default function MlSocialPipelinePanel() {
@@ -19,7 +19,7 @@ export default function MlSocialPipelinePanel() {
             will appear here after the model is trained and deployed.
           </p>
         </div>
-        <Link href="/admin/ml-integration">
+        <Link to="/admin/ml-integration">
           <span className="text-sm font-medium text-primary cursor-pointer hover:underline">
             ML integration overview
           </span>

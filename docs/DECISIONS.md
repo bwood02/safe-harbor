@@ -68,6 +68,31 @@
 
 ---
 
+## 2026-04-09 -- Admin dashboard metrics source-of-truth split by domain
+
+**Decision:** Keep `AdminDashboardController` metric sources explicit by metric type:
+- Occupancy and active-resident KPI: `residents` where `case_status == "Active"`
+- Education/health KPIs + per-safehouse averages: latest per-resident record from `education_records` / `health_wellbeing_records` for active residents
+- Incident KPI + per-safehouse incident indicator/count: latest row per safehouse from `safehouse_monthly_metrics`, constrained to `month_start <= today`
+
+**Why:**
+- `safehouse_monthly_metrics` had sparse/future-dated records and did not reliably represent current per-resident education/health state
+- Education/health are better represented by resident-level latest snapshots
+- Incident counting for the dashboard is a monthly operational metric and already modeled in monthly metrics table
+
+---
+
+## 2026-04-09 -- Frontend API usage standard: shared typed client + slice hooks
+
+**Decision:** Frontend network calls should go through `frontend/src/lib/api.ts` (`apiGet`, `apiPost`, `apiPut`) with typed generics and per-slice hooks handling fallback/error strategy.
+
+**Why:**
+- Keeps fetch behavior consistent (same base URL, error normalization, JSON parsing rules)
+- Reduces duplicated networking code in page components
+- Keeps API contracts close to each feature slice (`useAdminDashboard.ts`, etc.)
+
+---
+
 ## 2026-04-07 -- Parallel slice agents must use separate git worktrees
 
 **Lesson learned, not yet enforced in tooling:** When 5 Claude Code windows ran the slice agents in parallel, they all shared one working directory. Concurrent `git checkout` calls raced and slice 3's branch ended up with slice 4's files committed to it. Recovered by rebasing slice 3 onto main after slice 4 merged (files were byte-identical so the rebase dropped them automatically), but the close call wasted ~20 min and almost lost work.

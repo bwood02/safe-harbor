@@ -1,4 +1,4 @@
-import { Link } from 'wouter';
+import { Link } from 'react-router-dom';
 import { useMlDeploymentStatus } from '@/hooks/useMlDeploymentStatus';
 
 const CASELOAD_IDS = new Set([
@@ -25,7 +25,7 @@ export default function MlCaseloadPipelinePanel() {
             routes are wired. Below shows whether each model file is loaded in the ML API.
           </p>
         </div>
-        <Link href="/admin/ml-integration">
+        <Link to="/admin/ml-integration">
           <span className="text-sm font-medium text-primary cursor-pointer hover:underline">
             ML integration overview
           </span>
