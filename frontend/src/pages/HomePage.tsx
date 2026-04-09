@@ -68,12 +68,12 @@ export default function HomePage() {
                 </p>
 
                 <div className="flex flex-wrap gap-3 sm:gap-4">
-                  <a
-                    href="#donate"
+                  <Link
+                    to="/donor"
                     className="inline-flex items-center justify-center min-h-[48px] px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full bg-primary text-white text-base sm:text-lg font-medium hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap"
                   >
                     Donate
-                  </a>
+                  </Link>
                   <Link to="/impact">
                     <span className="inline-flex items-center justify-center min-h-[48px] px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full border border-foreground/20 text-foreground text-base sm:text-lg font-medium hover:bg-foreground/5 transition-colors cursor-pointer whitespace-nowrap">
                       Read our impact
