@@ -305,4 +305,111 @@ public async Task<IActionResult> Register([FromBody] RegisterDto dto)
 
         return int.TryParse(raw, out var supporterId) ? supporterId : null;
     }
+    [AllowAnonymous]
+    [HttpGet("google-login")]
+
+public IActionResult GoogleLogin([FromQuery] string? returnUrl = null)
+{
+    var redirectUrl = Url.Action(nameof(GoogleResponse), "Auth", new { returnUrl });
+    var properties = _signInManager.ConfigureExternalAuthenticationProperties("Google", redirectUrl!);
+
+    return Challenge(properties, "Google");
+}
+[AllowAnonymous]
+[HttpGet("google-response")]
+public async Task<IActionResult> GoogleResponse([FromQuery] string? returnUrl = null)
+{
+    var frontendBaseUrl = "http://localhost:5173"; // move to config later
+    var safeReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl;
+
+    var info = await _signInManager.GetExternalLoginInfoAsync();
+    if (info == null)
+    {
+        return Redirect($"{frontendBaseUrl}/login?error=external_login_failed");
+    }
+
+    var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+    var firstName = info.Principal.FindFirstValue(ClaimTypes.GivenName) ?? "Unknown";
+    var lastName = info.Principal.FindFirstValue(ClaimTypes.Surname) ?? "User";
+
+    if (string.IsNullOrWhiteSpace(email))
+    {
+        return Redirect($"{frontendBaseUrl}/login?error=no_email");
+    }
+
+    var normalizedEmail = email.Trim().ToLowerInvariant();
+
+    // ======================
+    // STEP 1: CHECK EXISTING USER
+    // ======================
+    var existingUser = await _userManager.FindByEmailAsync(normalizedEmail);
+
+    if (existingUser != null)
+    {
+        await _signInManager.SignInAsync(existingUser, isPersistent: true);
+        return Redirect($"{frontendBaseUrl}{safeReturnUrl}");
+    }
+
+    // ======================
+    // STEP 2: FIND OR CREATE SUPPORTER
+    // ======================
+    var supporter = await _mainAppDbContext.Supporters
+        .FirstOrDefaultAsync(s => s.Email != null && s.Email.ToLower() == normalizedEmail);
+
+    if (supporter == null)
+    {
+        supporter = new Supporter
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Email = normalizedEmail,
+            DisplayName = $"{firstName} {lastName}",
+
+            // SAFE DEFAULTS (valid values from your enums)
+            SupporterType = "MonetaryDonor",
+            RelationshipType = "International",
+            Region = "Unknown",
+            Country = "Unknown",
+            Phone = "Unknown",
+            Status = "Active",
+            AcquisitionChannel = "Website",
+
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _mainAppDbContext.Supporters.Add(supporter);
+        await _mainAppDbContext.SaveChangesAsync();
+    }
+
+    // ======================
+    // STEP 3: CREATE USER
+    // ======================
+    var user = new ApplicationUser
+    {
+        UserName = normalizedEmail,
+        Email = normalizedEmail,
+        EmailConfirmed = true
+    };
+
+    var createResult = await _userManager.CreateAsync(user);
+    if (!createResult.Succeeded)
+    {
+        return Redirect($"{frontendBaseUrl}/login?error=user_create_failed");
+    }
+
+    // Assign role
+    await _userManager.AddToRoleAsync(user, AuthRoles.Donor);
+
+    // Add supporter claim
+    await _userManager.AddClaimAsync(user,
+        new Claim(SupporterIdClaimType, supporter.SupporterId.ToString()));
+
+    // Link Google login
+    await _userManager.AddLoginAsync(user, info);
+
+    // Sign in
+    await _signInManager.SignInAsync(user, isPersistent: true);
+
+    return Redirect($"{frontendBaseUrl}{safeReturnUrl}");
+}
 }
