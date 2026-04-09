@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using CurrencyToPhp = global::backend.CurrencyToPhp;
 
 namespace backend.Controllers;
 
@@ -75,6 +76,78 @@ public class AdminDashboardController : ControllerBase
         return candidates.Any() ? candidates.Max() : today;
     }
 
+    /// <summary>Display line for donation rows in activity feeds (original currency, not converted).</summary>
+    private static string FormatDonationMetaLine(double estimatedValue, string? currencyCode, string? campaignName)
+    {
+        var code = string.IsNullOrWhiteSpace(currencyCode) ? "PHP" : currencyCode.Trim().ToUpperInvariant();
+        var amountPart = code == "PHP"
+            ? $"₱{estimatedValue:N0}"
+            : $"{code} {estimatedValue:N0}";
+        return amountPart + (campaignName != null ? $" • {campaignName}" : "");
+    }
+
+    /// <summary>
+    /// Merges donations, process recordings, and home visitations. When <paramref name="limitForRecentWidget"/> is true,
+    /// takes the 8 most recent from each source then returns the top 8 of the merged list (matches prior behavior).
+    /// </summary>
+    private async Task<List<RecentActivityDto>> BuildMergedActivityFeedAsync(bool limitForRecentWidget)
+    {
+        IQueryable<Donation> donationsQuery = _context.Donations.AsNoTracking().OrderByDescending(d => d.DonationDate);
+        if (limitForRecentWidget)
+            donationsQuery = donationsQuery.Take(8);
+        var donRows = await donationsQuery
+            .Select(d => new
+            {
+                d.DonationType,
+                d.EstimatedValue,
+                d.CurrencyCode,
+                d.CampaignName,
+                d.DonationDate,
+            })
+            .ToListAsync();
+
+        var donations = donRows.Select(d => new RecentActivityDto(
+            $"Donation received: {d.DonationType}",
+            FormatDonationMetaLine(d.EstimatedValue, d.CurrencyCode, d.CampaignName),
+            "donation",
+            d.DonationDate != null
+                ? d.DonationDate.Value.ToDateTime(TimeOnly.MinValue)
+                : DateTime.MinValue)).ToList();
+
+        IQueryable<ProcessRecording> recordingsQuery = _context.ProcessRecordings.AsNoTracking().OrderByDescending(p => p.SessionDate);
+        if (limitForRecentWidget)
+            recordingsQuery = recordingsQuery.Take(8);
+        var recordings = await recordingsQuery
+            .Select(p => new RecentActivityDto(
+                $"Session logged: {p.SessionType}",
+                $"{p.SocialWorker} • Resident #{p.ResidentId}",
+                "recording",
+                p.SessionDate.ToDateTime(TimeOnly.MinValue)))
+            .ToListAsync();
+
+        IQueryable<HomeVisitation> visitsQuery = _context.HomeVisitations.AsNoTracking().OrderByDescending(h => h.VisitDate);
+        if (limitForRecentWidget)
+            visitsQuery = visitsQuery.Take(8);
+        var visits = await visitsQuery
+            .Select(h => new RecentActivityDto(
+                $"Home visit: {h.VisitType}",
+                $"{h.SocialWorker} • {h.LocationVisited}",
+                "visit",
+                h.VisitDate.ToDateTime(TimeOnly.MinValue)))
+            .ToListAsync();
+
+        var merged = donations
+            .Concat(recordings)
+            .Concat(visits)
+            .OrderByDescending(x => x.Timestamp)
+            .ToList();
+
+        if (limitForRecentWidget)
+            merged = merged.Take(8).ToList();
+
+        return merged;
+    }
+
     [HttpGet("kpis")]
     public async Task<ActionResult<KpisDto>> GetKpis()
     {
@@ -85,17 +158,20 @@ public class AdminDashboardController : ControllerBase
             var activeResidents = await _context.Residents
                 .CountAsync(r => r.CaseStatus == "Active");
 
-            // Recent donations: last 30 days ending at the most recent donation date
+            // Recent donations: last 7 days (inclusive) ending at the most recent donation date in DB; sum in PHP.
             DateOnly? donMax = await _context.Donations.Where(d => d.DonationDate != null).AnyAsync()
                 ? await _context.Donations.Where(d => d.DonationDate != null).MaxAsync(d => d.DonationDate!.Value)
                 : null;
             double recentDonationsAmount = 0;
             if (donMax.HasValue)
             {
-                var donStart = donMax.Value.AddDays(-29);
-                recentDonationsAmount = await _context.Donations
+                var donStart = donMax.Value.AddDays(-6);
+                var donationSlice = await _context.Donations
+                    .AsNoTracking()
                     .Where(d => d.DonationDate != null && d.DonationDate >= donStart && d.DonationDate <= donMax)
-                    .SumAsync(d => (double?)d.EstimatedValue) ?? 0;
+                    .Select(d => new { d.EstimatedValue, d.CurrencyCode })
+                    .ToListAsync();
+                recentDonationsAmount = donationSlice.Sum(d => CurrencyToPhp.Convert(d.EstimatedValue, d.CurrencyCode));
             }
 
             // Upcoming reviews: any open intervention plans with a case conference scheduled
@@ -197,46 +273,20 @@ public class AdminDashboardController : ControllerBase
     {
         try
         {
-            var donations = await _context.Donations
-                .OrderByDescending(d => d.DonationDate)
-                .Take(8)
-                .Select(d => new RecentActivityDto(
-                    $"Donation received: {d.DonationType}",
-                    $"${d.EstimatedValue:N0}" + (d.CampaignName != null ? $" • {d.CampaignName}" : ""),
-                    "donation",
-                    d.DonationDate != null
-                        ? d.DonationDate.Value.ToDateTime(TimeOnly.MinValue)
-                        : DateTime.MinValue))
-                .ToListAsync();
+            return Ok(await BuildMergedActivityFeedAsync(limitForRecentWidget: true));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(503, new { error = "Database unavailable", message = ex.Message });
+        }
+    }
 
-            var recordings = await _context.ProcessRecordings
-                .OrderByDescending(p => p.SessionDate)
-                .Take(8)
-                .Select(p => new RecentActivityDto(
-                    $"Session logged: {p.SessionType}",
-                    $"{p.SocialWorker} • Resident #{p.ResidentId}",
-                    "recording",
-                    p.SessionDate.ToDateTime(TimeOnly.MinValue)))
-                .ToListAsync();
-
-            var visits = await _context.HomeVisitations
-                .OrderByDescending(h => h.VisitDate)
-                .Take(8)
-                .Select(h => new RecentActivityDto(
-                    $"Home visit: {h.VisitType}",
-                    $"{h.SocialWorker} • {h.LocationVisited}",
-                    "visit",
-                    h.VisitDate.ToDateTime(TimeOnly.MinValue)))
-                .ToListAsync();
-
-            var merged = donations
-                .Concat(recordings)
-                .Concat(visits)
-                .OrderByDescending(x => x.Timestamp)
-                .Take(8)
-                .ToList();
-
-            return Ok(merged);
+    [HttpGet("activity-log")]
+    public async Task<ActionResult<List<RecentActivityDto>>> GetActivityLog()
+    {
+        try
+        {
+            return Ok(await BuildMergedActivityFeedAsync(limitForRecentWidget: false));
         }
         catch (Exception ex)
         {
