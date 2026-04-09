@@ -12,6 +12,14 @@ import {
 import { apiGet } from '@/lib/api';
 import { formatPhp } from '@/lib/currencyPhp';
 
+interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 function formatRelativeDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -76,6 +84,10 @@ export default function AdminDashboardPage() {
   const [auditItems, setAuditItems] = useState<RecentActivityItem[] | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize, setAuditPageSize] = useState(25);
+  const [auditTotalCount, setAuditTotalCount] = useState(0);
+  const [auditTotalPages, setAuditTotalPages] = useState(1);
 
   useEffect(() => {
     if (!auditOpen) return;
@@ -83,20 +95,26 @@ export default function AdminDashboardPage() {
     setAuditLoading(true);
     setAuditError(null);
     setAuditItems(null);
-    apiGet<RecentActivityItem[]>('/api/AdminDashboard/activity-log').then((res) => {
+    apiGet<PagedResult<RecentActivityItem>>(
+      `/api/AdminDashboard/activity-log?page=${auditPage}&pageSize=${auditPageSize}`,
+    ).then((res) => {
       if (cancelled) return;
       setAuditLoading(false);
       if (res.data !== null) {
-        setAuditItems(res.data);
+        setAuditItems(res.data.items);
+        setAuditTotalCount(res.data.totalCount);
+        setAuditTotalPages(res.data.totalPages);
       } else {
         setAuditError(res.error ?? 'Could not load audit log');
         setAuditItems([]);
+        setAuditTotalCount(0);
+        setAuditTotalPages(1);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [auditOpen]);
+  }, [auditOpen, auditPage, auditPageSize]);
 
   const kpiCards = [
     {
@@ -372,7 +390,10 @@ export default function AdminDashboardPage() {
                 aria-label="View full audit log"
                 aria-haspopup="dialog"
                 aria-expanded={auditOpen}
-                onClick={() => setAuditOpen(true)}
+                onClick={() => {
+                  setAuditPage(1);
+                  setAuditOpen(true);
+                }}
               >
                 View Full Audit Log
               </button>
@@ -445,6 +466,51 @@ export default function AdminDashboardPage() {
               ) : (
                 <ActivityFeedList items={auditItems ?? []} />
               )}
+            </div>
+            <div className="border-t border-border px-6 py-4 shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <label htmlFor="audit-page-size" className="text-muted-foreground">
+                  Rows per page
+                </label>
+                <select
+                  id="audit-page-size"
+                  className="rounded-md border border-border bg-white px-2 py-1 text-foreground"
+                  value={auditPageSize}
+                  onChange={(e) => {
+                    const nextSize = Number(e.target.value);
+                    setAuditPageSize(nextSize);
+                    setAuditPage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground">
+                  {auditTotalCount === 0
+                    ? 'No records'
+                    : `Page ${auditPage} of ${auditTotalPages} (${auditTotalCount} records)`}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={auditLoading || auditPage <= 1}
+                  onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={auditLoading || auditPage >= auditTotalPages}
+                  onClick={() => setAuditPage((p) => Math.min(auditTotalPages, p + 1))}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         </div>
