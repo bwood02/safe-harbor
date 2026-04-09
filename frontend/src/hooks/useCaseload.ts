@@ -6,6 +6,7 @@ import type {
   SafehouseOption,
   CaseloadFilters,
   CaseloadFilterOptions,
+  PagedResidents,
   ResidentInput,
   ResidentFull,
 } from '@/types/caseload';
@@ -24,13 +25,15 @@ const EMPTY_FILTERS: CaseloadFilterOptions = {
   socialWorkers: [],
 };
 
-function buildQuery(filters: CaseloadFilters): string {
+function buildQuery(filters: CaseloadFilters, page: number, pageSize: number): string {
   const params = new URLSearchParams();
   if (filters.search) params.set('search', filters.search);
   if (filters.status) params.set('status', filters.status);
   if (filters.safehouseId != null) params.set('safehouseId', String(filters.safehouseId));
   if (filters.category) params.set('category', filters.category);
   if (filters.riskLevel) params.set('riskLevel', filters.riskLevel);
+  params.set('page', String(page));
+  params.set('pageSize', String(pageSize));
   const s = params.toString();
   return s ? `?${s}` : '';
 }
@@ -67,9 +70,17 @@ function useApi<T>(path: string | null, fallback: T): QueryState<T> {
   return { ...state, refetch: () => setVersion((v) => v + 1) };
 }
 
-export function useCaseloadList(filters: CaseloadFilters) {
-  const path = `/api/CaseloadInventory/residents${buildQuery(filters)}`;
-  return useApi<ResidentListItem[]>(path, []);
+const EMPTY_PAGED_RESIDENTS: PagedResidents = {
+  items: [],
+  totalCount: 0,
+  page: 1,
+  pageSize: 25,
+  totalPages: 1,
+};
+
+export function useCaseloadList(filters: CaseloadFilters, page: number, pageSize: number) {
+  const path = `/api/CaseloadInventory/residents${buildQuery(filters, page, pageSize)}`;
+  return useApi<PagedResidents>(path, EMPTY_PAGED_RESIDENTS);
 }
 
 export function useCaseloadDetail(id: number | null) {

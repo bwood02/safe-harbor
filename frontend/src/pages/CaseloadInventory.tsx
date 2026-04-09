@@ -78,6 +78,8 @@ function statusBadgeClass(status: string): string {
 
 export default function CaseloadInventoryPage() {
   const [filters, setFilters] = useState<CaseloadFilters>({});
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
@@ -85,13 +87,21 @@ export default function CaseloadInventoryPage() {
   const [formEditingId, setFormEditingId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
-  const list = useCaseloadList(filters);
+  const list = useCaseloadList(filters, page, pageSize);
   const detail = useCaseloadDetail(selectedId);
   const safehouses = useSafehouses();
   const filterOptions = useCaseloadFilters();
   const mutations = useCaseloadMutations();
 
-  const rows = list.data ?? [];
+  const rows = list.data?.items ?? [];
+  const totalCount = list.data?.totalCount ?? 0;
+  const currentPage = list.data?.page ?? page;
+  const totalPages = list.data?.totalPages ?? 1;
+
+  const updateFilters = (next: CaseloadFilters) => {
+    setFilters(next);
+    setPage(1);
+  };
 
   const openCreate = () => {
     setFormMode('create');
@@ -180,7 +190,7 @@ export default function CaseloadInventoryPage() {
               <input
                 type="text"
                 value={filters.search ?? ''}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value || undefined })}
+                onChange={(e) => updateFilters({ ...filters, search: e.target.value || undefined })}
                 placeholder="Search by case control number..."
                 className="bg-transparent outline-none flex-1 text-base"
                 aria-label="Search by case control number"
@@ -188,7 +198,7 @@ export default function CaseloadInventoryPage() {
             </div>
             <select
               value={filters.status ?? ''}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value || undefined })}
+              onChange={(e) => updateFilters({ ...filters, status: e.target.value || undefined })}
               className="px-4 py-3 rounded-xl bg-background border border-border text-foreground font-medium"
               aria-label="Filter by status"
             >
@@ -200,7 +210,7 @@ export default function CaseloadInventoryPage() {
             <select
               value={filters.safehouseId ?? ''}
               onChange={(e) =>
-                setFilters({
+                updateFilters({
                   ...filters,
                   safehouseId: e.target.value ? Number(e.target.value) : undefined,
                 })
@@ -215,7 +225,7 @@ export default function CaseloadInventoryPage() {
             </select>
             <select
               value={filters.category ?? ''}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value || undefined })}
+              onChange={(e) => updateFilters({ ...filters, category: e.target.value || undefined })}
               className="px-4 py-3 rounded-xl bg-background border border-border text-foreground font-medium"
               aria-label="Filter by category"
             >
@@ -226,7 +236,7 @@ export default function CaseloadInventoryPage() {
             </select>
             <select
               value={filters.riskLevel ?? ''}
-              onChange={(e) => setFilters({ ...filters, riskLevel: e.target.value || undefined })}
+              onChange={(e) => updateFilters({ ...filters, riskLevel: e.target.value || undefined })}
               className="px-4 py-3 rounded-xl bg-background border border-border text-foreground font-medium"
               aria-label="Filter by risk level"
             >
@@ -237,7 +247,7 @@ export default function CaseloadInventoryPage() {
             </select>
           </div>
           <div className="mt-3 text-sm text-muted-foreground flex items-center gap-4 flex-wrap">
-            <span className="inline-flex items-center gap-1"><Filter className="w-4 h-4" /> {rows.length} result{rows.length === 1 ? '' : 's'}</span>
+            <span className="inline-flex items-center gap-1"><Filter className="w-4 h-4" /> {totalCount} result{totalCount === 1 ? '' : 's'}</span>
             {list.error && (
               <span className="inline-flex items-center gap-1 text-destructive"><AlertTriangle className="w-4 h-4" /> {list.error}</span>
             )}
@@ -305,6 +315,49 @@ export default function CaseloadInventoryPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="border-t border-border px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <label htmlFor="caseload-page-size" className="text-muted-foreground">
+                Rows per page
+              </label>
+              <select
+                id="caseload-page-size"
+                className="rounded-md border border-border bg-white px-2 py-1 text-foreground"
+                value={pageSize}
+                onChange={(e) => {
+                  const nextSize = Number(e.target.value);
+                  setPageSize(nextSize);
+                  setPage(1);
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                {totalCount === 0 ? 'No records' : `Page ${currentPage} of ${totalPages} (${totalCount} records)`}
+              </span>
+              <button
+                type="button"
+                className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={list.loading || currentPage <= 1}
+                onClick={() => setPage(Math.max(1, currentPage - 1))}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={list.loading || currentPage >= totalPages}
+                onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </main>

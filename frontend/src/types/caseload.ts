@@ -94,6 +94,14 @@ export interface CaseloadFilterOptions {
   socialWorkers: string[];
 }
 
+export interface PagedResidents {
+  items: ResidentListItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export type ResidentInput = Omit<
   ResidentFull,
   'residentId' | 'dateEnrolled' | 'dateClosed'
