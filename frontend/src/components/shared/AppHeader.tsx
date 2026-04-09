@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { logoutUser } from '@/lib/AuthApi';
+import LogoMark from '@/components/shared/LogoMark';
 
 type NavLinkItem = {
   to: string;
@@ -125,8 +126,9 @@ export default function AppHeader() {
         ref={menuRef}
         className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4"
       >
-        <Link to="/" className="shrink-0">
-          <span className="font-serif italic font-medium text-foreground text-xl sm:text-2xl tracking-wide cursor-pointer select-none whitespace-nowrap">
+        <Link to="/" className="shrink-0 flex items-center gap-2 cursor-pointer">
+          <LogoMark className="w-8 h-8 sm:w-9 sm:h-9 text-primary" />
+          <span className="font-serif italic font-medium text-foreground text-xl sm:text-2xl tracking-wide select-none whitespace-nowrap">
             Safe Harbor
           </span>
         </Link>
