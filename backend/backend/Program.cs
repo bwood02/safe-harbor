@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using backend.Infrastructure;
+using Microsoft.AspNetCore.Authentication.Google;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,12 +25,17 @@ builder.Services.AddDbContext<MainAppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("MainAppDbConnection")));
 
+// ML API client
 builder.Services.AddHttpClient("MlApi", (sp, client) =>
 {
     var cfg = sp.GetRequiredService<IConfiguration>();
     var baseUrl = cfg["Ml:BaseUrl"]?.Trim().TrimEnd('/');
+
     if (!string.IsNullOrWhiteSpace(baseUrl))
+    {
         client.BaseAddress = new Uri(baseUrl + "/");
+    }
+
     client.Timeout = TimeSpan.FromSeconds(120);
 });
 
@@ -41,7 +47,6 @@ builder.Services.AddDbContext<AuthIdentityDbContext>(options =>
 // ASP.NET Identity with roles
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    // Password policy
     options.Password.RequireDigit = false;
     options.Password.RequireLowercase = false;
     options.Password.RequireNonAlphanumeric = false;
@@ -50,6 +55,16 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 })
 .AddEntityFrameworkStores<AuthIdentityDbContext>()
 .AddDefaultTokenProviders();
+
+// Google external authentication
+builder.Services
+    .AddAuthentication()
+    .AddGoogle("Google", options =>
+    {
+        options.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
+        options.CallbackPath = "/signin-google";
+    });
 
 // Cookie settings
 builder.Services.ConfigureApplicationCookie(options =>
@@ -69,6 +84,7 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins(
                 "http://localhost:5173",
+                "https://localhost:5173",
                 "http://127.0.0.1:5173",
                 "https://safe-harbor.vercel.app",
                 "https://nice-beach-0045c401e.6.azurestaticapps.net",
@@ -80,7 +96,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Authorization (secure-by-default; explicit [AllowAnonymous] required for public endpoints)
+// Authorization
 builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -115,25 +131,29 @@ else
     app.UseHsts();
 }
 
-app.UseCors(FrontendCorsPolicy);
-
 app.UseHttpsRedirection();
 
 app.UseSecurityHeaders();
+
+app.UseCors(FrontendCorsPolicy);
 
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/api/Ml", StringComparison.OrdinalIgnoreCase))
     {
         var started = DateTime.UtcNow;
+
         await next();
+
         var elapsedMs = (DateTime.UtcNow - started).TotalMilliseconds;
+
         app.Logger.LogInformation(
             "ML request {Method} {Path} -> {StatusCode} in {ElapsedMs:0.0}ms",
             context.Request.Method,
             context.Request.Path,
             context.Response.StatusCode,
             elapsedMs);
+
         return;
     }
 
