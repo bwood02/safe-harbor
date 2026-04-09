@@ -3,4 +3,5 @@ export interface AuthSession {
   userName: string | null;
   email: string | null;
   roles: string[];
+  supporterId?: number | null;
 }

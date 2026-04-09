@@ -1,5 +1,20 @@
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '';
 
+export interface RegisterUserPayload {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  supporterType: string;
+  relationshipType: string;
+  region: string;
+  country: string;
+  phone: string;
+  status: string;
+  acquisitionChannel: string;
+  organizationName?: string | null;
+}
+
 async function readApiError(
   response: Response,
   fallbackMessage: string
@@ -20,6 +35,10 @@ async function readApiError(
     return data.title;
   }
 
+  if (typeof data?.error === 'string' && data.error.length > 0) {
+    return data.error;
+  }
+
   if (Array.isArray(data)) {
     const firstDescription = data.find(
       (item: unknown): item is { description?: string } =>
@@ -34,17 +53,14 @@ async function readApiError(
   return fallbackMessage;
 }
 
-export async function registerUser(
-  email: string,
-  password: string
-): Promise<void> {
+export async function registerUser(payload: RegisterUserPayload): Promise<void> {
   const response = await fetch(`${apiBaseUrl}/api/auth/register`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     credentials: 'include',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {

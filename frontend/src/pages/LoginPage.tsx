@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { loginUser } from '@/lib/AuthApi';
 import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { refreshAuthState } = useAuth();
+  const redirectParam = new URLSearchParams(location.search).get('redirect');
+  const safeRedirect = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +23,7 @@ export default function LoginPage() {
     try {
       await loginUser(email, password);
       await refreshAuthState();
-      navigate('/');
+      navigate(safeRedirect);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Unable to log in.'
@@ -83,7 +86,7 @@ export default function LoginPage() {
 
       <p className="mt-4 text-sm">
         Need an account?{' '}
-        <Link to="/register" className="underline">
+        <Link to={`/register?redirect=${encodeURIComponent(safeRedirect)}`} className="underline">
           Register
         </Link>
       </p>

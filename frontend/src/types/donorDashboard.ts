@@ -67,7 +67,7 @@ export interface CreateInKindDonationItemRequestDto {
 }
 
 export interface CreateDonationRequestDto {
-  supporterId: number;
+  supporterId?: number;
   donationType: string;
   donationDate: string | null;
   isRecurring: boolean;

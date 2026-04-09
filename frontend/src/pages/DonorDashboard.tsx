@@ -97,8 +97,6 @@ const CURRENCY_OPTIONS: Array<{ code: CurrencyCode; symbol: string }> = [
   { code: 'PHP', symbol: '₱' },
 ];
 
-const DONOR_SUPPORTER_ID = 25;
-
 function formatAmount(donation: DonationRow): string {
   if (donation.currency_code && donation.amount != null) {
     const symbol = CURRENCY_OPTIONS.find((c) => c.code === donation.currency_code)?.symbol ?? donation.currency_code;
@@ -116,7 +114,7 @@ function formatAmount(donation: DonationRow): string {
 function emptyDonationForm(): DonationRow {
   return {
     donation_id: 0,
-    supporter_id: DONOR_SUPPORTER_ID,
+    supporter_id: 0,
     donation_type: 'Monetary',
     donation_date: '',
     channel_source: null,
@@ -192,12 +190,17 @@ export default function DonorDashboardPage() {
       setLoadError(null);
       try {
         const response = await apiGet<GetDonationsResponseDto>(
-          `/api/DonorDashboard/GetDonations?supporter_id=${DONOR_SUPPORTER_ID}`,
+          '/api/DonorDashboard/GetDonations',
         );
         if (cancelled) return;
         if (!response.data) {
           setDonations([]);
-          setLoadError(response.error ?? 'Failed to load donor donations.');
+          const message = response.error ?? 'Failed to load donor donations.';
+          setLoadError(
+            message.toLowerCase().includes('donor-supporter link')
+              ? 'Your donor profile is not linked yet. Please contact support to finish account setup.'
+              : message,
+          );
           return;
         }
         const data = response.data;
@@ -259,11 +262,6 @@ export default function DonorDashboardPage() {
   function submitNewDonation(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!form.supporter_id || form.supporter_id <= 0) {
-      setFormError('Supporter ID is required.');
-      return;
-    }
-
     if (!form.donation_date) {
       setFormError('Donation date is required.');
       return;
@@ -291,7 +289,6 @@ export default function DonorDashboardPage() {
     }
 
     const requestBody: CreateDonationRequestDto = {
-      supporterId: form.supporter_id,
       donationType: form.donation_type,
       donationDate: form.donation_date || null,
       isRecurring: form.is_recurring,
@@ -330,7 +327,12 @@ export default function DonorDashboardPage() {
       );
 
       if (!res.data) {
-        setFormError(res.error ?? 'Failed to create donation.');
+        const message = res.error ?? 'Failed to create donation.';
+        if (message.toLowerCase().includes('donor-supporter link')) {
+          setFormError('Your donor profile is not linked yet. Please contact support to finish account setup.');
+          return;
+        }
+        setFormError(message);
         return;
       }
       const created = res.data;

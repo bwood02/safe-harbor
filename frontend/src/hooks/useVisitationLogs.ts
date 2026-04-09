@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet, apiPost, apiPut, API_BASE_URL } from '@/lib/api';
+import { apiDelete, apiGet, apiPost, apiPut } from '@/lib/api';
 import type { HomeVisit, HomeVisitInput, CaseConference, PagedHomeVisits } from '@/types/visitationLogs';
 
 interface QueryState<T> {
@@ -153,16 +153,7 @@ export function useVisitMutations() {
   }, []);
 
   const remove = useCallback(async (id: number) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/VisitationLogs/visits/${id}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) return { data: null, error: `HTTP ${res.status}` };
-      return { data: true, error: null };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Network error';
-      return { data: null, error: message };
-    }
+    return apiDelete<unknown>(`/api/VisitationLogs/visits/${id}`);
   }, []);
 
   return { create, update, remove };

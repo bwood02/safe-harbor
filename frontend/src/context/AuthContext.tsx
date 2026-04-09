@@ -24,6 +24,7 @@ const defaultSession: AuthSession = {
   userName: null,
   email: null,
   roles: [],
+  supporterId: null,
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);

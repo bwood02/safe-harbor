@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
 
@@ -6,6 +7,7 @@ namespace backend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[AllowAnonymous]
 public class PublicImpactController : ControllerBase
 {
     private readonly MainAppDbContext _context;

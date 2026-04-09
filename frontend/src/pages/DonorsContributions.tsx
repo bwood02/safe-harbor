@@ -676,7 +676,7 @@ export default function DonorsContributionsPage() {
     const res =
       donationModalMode === 'create'
         ? await apiPost<CreateDonationRequestDto, DonorDashboardDonationDto>(
-            '/api/DonorDashboard/CreateDonation',
+            '/api/Donations',
             body,
           )
         : await apiPut<UpdateDonationRequestDto, DonorDashboardDonationDto>(

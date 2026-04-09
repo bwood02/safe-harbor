@@ -2,6 +2,7 @@ using System.Data.Common;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
@@ -10,6 +11,7 @@ namespace backend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = AuthRoles.Admin)]
 public class MlController : ControllerBase
 {
     private readonly MainAppDbContext _context;

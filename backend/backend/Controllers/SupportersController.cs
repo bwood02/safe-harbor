@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using CurrencyToPhp = global::backend.CurrencyToPhp;
@@ -7,6 +8,7 @@ namespace backend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = AuthRoles.Admin)]
 public class SupportersController : ControllerBase
 {
     private readonly MainAppDbContext _context;

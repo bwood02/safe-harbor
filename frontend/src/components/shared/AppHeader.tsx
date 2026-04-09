@@ -19,7 +19,6 @@ export default function AppHeader() {
 
   const roles = authSession.roles ?? [];
   const isAdmin = roles.includes('Admin');
-  const isStaff = roles.includes('Staff');
   const isDonor = roles.includes('Donor');
 
   async function handleLogout() {
@@ -38,7 +37,7 @@ export default function AppHeader() {
     roleLinks.push({ to: '/admin', label: 'Admin' });
   }
 
-  if (isAdmin || isStaff) {
+  if (isAdmin) {
     roleLinks.push(
       { to: '/caseload', label: 'Caseload' },
       { to: '/process-recordings', label: 'Process Recordings' },

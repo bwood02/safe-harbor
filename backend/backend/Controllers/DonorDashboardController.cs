@@ -1,14 +1,19 @@
 using backend.Models;
 using backend.ViewModels;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace backend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = AuthRoles.Donor)]
 public class DonorDashboard : ControllerBase
 {
+    private const string SupporterIdClaimType = "supporter_id";
     private readonly MainAppDbContext _context;
 
     public DonorDashboard(MainAppDbContext context)
@@ -17,16 +22,21 @@ public class DonorDashboard : ControllerBase
     }
 
     [HttpGet("GetDonations")]
-    public async Task<ActionResult<List<DonorDashboardDonationViewModel>>> GetDonations([FromQuery] int supporter_id)
+    public async Task<ActionResult<List<DonorDashboardDonationViewModel>>> GetDonations()
     {
-        if (supporter_id <= 0)
+        var supporterIdClaim = User.FindFirstValue(SupporterIdClaimType);
+        if (string.IsNullOrWhiteSpace(supporterIdClaim))
         {
-            return BadRequest("supporter_id must be a positive integer.");
+            return Unauthorized("Missing donor-supporter link. Please contact support.");
+        }
+        if (!int.TryParse(supporterIdClaim, out var supporterId) || supporterId <= 0)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "Invalid donor-supporter link claim." });
         }
 
         var donations = await _context.Donations
             .AsNoTracking()
-            .Where(d => d.SupporterId == supporter_id)
+            .Where(d => d.SupporterId == supporterId)
             .Select(d => new DonorDashboardDonationViewModel
             {
                 DonationId = d.DonationId,
@@ -83,9 +93,14 @@ public class DonorDashboard : ControllerBase
             return BadRequest("Request body is required.");
         }
 
-        if (request.SupporterId <= 0)
+        var supporterIdClaim = User.FindFirstValue(SupporterIdClaimType);
+        if (string.IsNullOrWhiteSpace(supporterIdClaim))
         {
-            return BadRequest("supporterId must be a positive integer.");
+            return Unauthorized("Missing donor-supporter link. Please contact support.");
+        }
+        if (!int.TryParse(supporterIdClaim, out var supporterId) || supporterId <= 0)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "Invalid donor-supporter link claim." });
         }
 
         if (string.IsNullOrWhiteSpace(request.DonationType))
@@ -105,10 +120,10 @@ public class DonorDashboard : ControllerBase
 
         var supporterExists = await _context.Supporters
             .AsNoTracking()
-            .AnyAsync(s => s.SupporterId == request.SupporterId);
+            .AnyAsync(s => s.SupporterId == supporterId);
         if (!supporterExists)
         {
-            return BadRequest($"Supporter {request.SupporterId} does not exist.");
+            return Conflict("Your donor account is linked to a supporter record that does not exist.");
         }
 
         if (request.ReferralPostId.HasValue)
@@ -146,7 +161,7 @@ public class DonorDashboard : ControllerBase
         {
             var donation = new Donation
             {
-                SupporterId = request.SupporterId,
+                SupporterId = supporterId,
                 DonationType = request.DonationType.Trim(),
                 DonationDate = request.DonationDate,
                 IsRecurring = request.IsRecurring,
@@ -248,7 +263,7 @@ public class DonorDashboard : ControllerBase
 
             return CreatedAtAction(
                 nameof(GetDonations),
-                new { supporter_id = created.SupporterId },
+                routeValues: null,
                 created
             );
         }
@@ -258,4 +273,5 @@ public class DonorDashboard : ControllerBase
             return StatusCode(500, new { error = "Failed to create donation.", detail = ex.Message });
         }
     }
+
 }

@@ -1,10 +1,13 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AppHeader from '@/components/shared/AppHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
 import { useHomepageStats } from '@/hooks/usePublicImpact';
+import { useAuth } from '@/context/AuthContext';
 
 export default function HomePage() {
   const { data, loading, isMock } = useHomepageStats();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const stats = [
     { label: 'Girls supported', value: data.girlsSupported },
@@ -39,6 +42,14 @@ export default function HomePage() {
     },
   ];
 
+  function handleDonateClick() {
+    if (isAuthenticated) {
+      navigate('/donor');
+      return;
+    }
+    navigate('/login?redirect=%2Fdonor');
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       
@@ -68,20 +79,16 @@ export default function HomePage() {
                 </p>
 
                 <div className="flex flex-wrap gap-3 sm:gap-4">
-                  <Link
-                    to="/donor"
+                  <button
+                    type="button"
+                    onClick={handleDonateClick}
                     className="inline-flex items-center justify-center min-h-[48px] px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full bg-primary text-white text-base sm:text-lg font-medium hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap"
                   >
                     Donate
-                  </Link>
+                  </button>
                   <Link to="/impact">
                     <span className="inline-flex items-center justify-center min-h-[48px] px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full border border-foreground/20 text-foreground text-base sm:text-lg font-medium hover:bg-foreground/5 transition-colors cursor-pointer whitespace-nowrap">
                       Read our impact
-                    </span>
-                  </Link>
-                  <Link to="/admin">
-                    <span className="inline-flex items-center justify-center min-h-[48px] px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full text-foreground/80 text-base sm:text-lg font-medium hover:text-foreground transition-colors cursor-pointer whitespace-nowrap">
-                      Staff login
                     </span>
                   </Link>
                 </div>

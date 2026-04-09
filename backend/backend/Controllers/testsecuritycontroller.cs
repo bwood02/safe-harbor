@@ -9,12 +9,13 @@ namespace backend.Controllers
     public class TestSecurityController : ControllerBase
     {
         [HttpGet("public")]
+        [AllowAnonymous]
         public IActionResult Public()
         {
             return Ok(new { message = "Anyone can access this endpoint." });
         }
 
-        [Authorize]
+        [Authorize(Roles = AuthRoles.Admin)]
         [HttpGet("authenticated")]
         public IActionResult AuthenticatedOnly()
         {
