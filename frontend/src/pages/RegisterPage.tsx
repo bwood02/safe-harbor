@@ -141,146 +141,6 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="supporterType" className="block mb-2 font-medium">
-            Supporter Type
-          </label>
-          <select
-            id="supporterType"
-            className="w-full rounded-md border px-3 py-2"
-            value={supporterType}
-            onChange={(event) => setSupporterType(event.target.value as (typeof SUPPORTER_TYPES)[number])}
-            disabled={!needsSupporterProfile}
-          >
-            {SUPPORTER_TYPES.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {supporterType === 'PartnerOrganization' && (
-          <div>
-            <label htmlFor="organizationName" className="block mb-2 font-medium">
-              Organization Name
-            </label>
-            <input
-              id="organizationName"
-              type="text"
-              className="w-full rounded-md border px-3 py-2"
-              value={organizationName}
-              onChange={(event) => setOrganizationName(event.target.value)}
-              required={requiresOrganizationName}
-              disabled={!needsSupporterProfile}
-            />
-          </div>
-        )}
-
-        <div>
-          <label htmlFor="relationshipType" className="block mb-2 font-medium">
-            Relationship Type
-          </label>
-          <select
-            id="relationshipType"
-            className="w-full rounded-md border px-3 py-2"
-            value={relationshipType}
-            onChange={(event) => setRelationshipType(event.target.value as (typeof RELATIONSHIP_TYPES)[number])}
-            disabled={!needsSupporterProfile}
-          >
-            {RELATIONSHIP_TYPES.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="region" className="block mb-2 font-medium">
-            Region
-          </label>
-          <input
-            id="region"
-            type="text"
-            className="w-full rounded-md border px-3 py-2"
-            value={region}
-            onChange={(event) => setRegion(event.target.value)}
-            required={needsSupporterProfile}
-            disabled={!needsSupporterProfile}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="country" className="block mb-2 font-medium">
-            Country
-          </label>
-          <input
-            id="country"
-            type="text"
-            className="w-full rounded-md border px-3 py-2"
-            value={country}
-            onChange={(event) => setCountry(event.target.value)}
-            required={needsSupporterProfile}
-            disabled={!needsSupporterProfile}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="phone" className="block mb-2 font-medium">
-            Phone
-          </label>
-          <input
-            id="phone"
-            type="text"
-            className="w-full rounded-md border px-3 py-2"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            required={needsSupporterProfile}
-            disabled={!needsSupporterProfile}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="status" className="block mb-2 font-medium">
-            Status
-          </label>
-          <select
-            id="status"
-            className="w-full rounded-md border px-3 py-2"
-            value={status}
-            onChange={(event) => setStatus(event.target.value as (typeof STATUSES)[number])}
-            disabled={!needsSupporterProfile}
-          >
-            {STATUSES.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="acquisitionChannel" className="block mb-2 font-medium">
-            Acquisition Channel
-          </label>
-          <select
-            id="acquisitionChannel"
-            className="w-full rounded-md border px-3 py-2"
-            value={acquisitionChannel}
-            onChange={(event) =>
-              setAcquisitionChannel(event.target.value as (typeof ACQUISITION_CHANNELS)[number])
-            }
-            disabled={!needsSupporterProfile}
-          >
-            {ACQUISITION_CHANNELS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
           <label htmlFor="password" className="block mb-2 font-medium">
             Password
           </label>
@@ -316,9 +176,147 @@ export default function RegisterPage() {
         )}
 
         {needsSupporterProfile && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 text-sm">
-            No supporter match found. Please complete the additional supporter profile fields below, then submit again.
-          </div>
+          <>
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 text-sm">
+              No supporter match found. Please complete the supporter profile fields below, then submit again.
+            </div>
+
+            <div>
+              <label htmlFor="supporterType" className="block mb-2 font-medium">
+                Supporter Type
+              </label>
+              <select
+                id="supporterType"
+                className="w-full rounded-md border px-3 py-2"
+                value={supporterType}
+                onChange={(event) =>
+                  setSupporterType(event.target.value as (typeof SUPPORTER_TYPES)[number])
+                }
+              >
+                {SUPPORTER_TYPES.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {supporterType === 'PartnerOrganization' && (
+              <div>
+                <label htmlFor="organizationName" className="block mb-2 font-medium">
+                  Organization Name
+                </label>
+                <input
+                  id="organizationName"
+                  type="text"
+                  className="w-full rounded-md border px-3 py-2"
+                  value={organizationName}
+                  onChange={(event) => setOrganizationName(event.target.value)}
+                  required={requiresOrganizationName}
+                />
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="relationshipType" className="block mb-2 font-medium">
+                Relationship Type
+              </label>
+              <select
+                id="relationshipType"
+                className="w-full rounded-md border px-3 py-2"
+                value={relationshipType}
+                onChange={(event) =>
+                  setRelationshipType(event.target.value as (typeof RELATIONSHIP_TYPES)[number])
+                }
+              >
+                {RELATIONSHIP_TYPES.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="region" className="block mb-2 font-medium">
+                Region
+              </label>
+              <input
+                id="region"
+                type="text"
+                className="w-full rounded-md border px-3 py-2"
+                value={region}
+                onChange={(event) => setRegion(event.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="country" className="block mb-2 font-medium">
+                Country
+              </label>
+              <input
+                id="country"
+                type="text"
+                className="w-full rounded-md border px-3 py-2"
+                value={country}
+                onChange={(event) => setCountry(event.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="block mb-2 font-medium">
+                Phone
+              </label>
+              <input
+                id="phone"
+                type="text"
+                className="w-full rounded-md border px-3 py-2"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="status" className="block mb-2 font-medium">
+                Status
+              </label>
+              <select
+                id="status"
+                className="w-full rounded-md border px-3 py-2"
+                value={status}
+                onChange={(event) => setStatus(event.target.value as (typeof STATUSES)[number])}
+              >
+                {STATUSES.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="acquisitionChannel" className="block mb-2 font-medium">
+                Acquisition Channel
+              </label>
+              <select
+                id="acquisitionChannel"
+                className="w-full rounded-md border px-3 py-2"
+                value={acquisitionChannel}
+                onChange={(event) =>
+                  setAcquisitionChannel(event.target.value as (typeof ACQUISITION_CHANNELS)[number])
+                }
+              >
+                {ACQUISITION_CHANNELS.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
         )}
 
         {errorMessage ? (
