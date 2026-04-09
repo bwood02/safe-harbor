@@ -6,17 +6,19 @@ import {
   useProcessRecordings,
   type ProcessRecordingSession,
 } from '@/hooks/useProcessRecording';
+import { apiPost } from '@/lib/api';
 
 export default function ProcessRecordingPage() {
   const residents = useResidentsForPicker();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
   const effectiveId =
     selectedId ?? (residents.data && residents.data.length > 0 ? residents.data[0].residentId : null);
 
-  const sessions = useProcessRecordings(effectiveId);
+  const sessions = useProcessRecordings(effectiveId, reloadToken);
 
   const filteredResidents = useMemo(() => {
     if (!residents.data) return [];
@@ -138,7 +140,17 @@ export default function ProcessRecordingPage() {
         </div>
       </main>
 
-      {modalOpen && <NewEntryModal onClose={() => setModalOpen(false)} />}
+      {modalOpen && (
+        <NewEntryModal
+          onClose={() => setModalOpen(false)}
+          residents={residents.data ?? []}
+          defaultResidentId={effectiveId}
+          onCreated={() => {
+            setModalOpen(false);
+            setReloadToken((v) => v + 1);
+          }}
+        />
+      )}
 
       <PublicFooter />
     </div>
@@ -225,61 +237,310 @@ function SessionCard({ session }: { session: ProcessRecordingSession }) {
   );
 }
 
-function NewEntryModal({ onClose }: { onClose: () => void }) {
+type CreateProcessRecordingRequest = {
+  residentId: number;
+  sessionDate: string; // yyyy-mm-dd
+  socialWorker: string;
+  sessionType: string;
+  sessionDurationMinutes: number;
+  emotionalStateObserved: string;
+  emotionalStateEnd: string;
+  sessionNarrative: string;
+  interventionsApplied: string;
+  followUpActions: string;
+  progressNoted: boolean;
+  concernsFlagged: boolean;
+  referralMade: boolean;
+  notesRestricted: string | null;
+};
+
+function NewEntryModal({
+  onClose,
+  residents,
+  defaultResidentId,
+  onCreated,
+}: {
+  onClose: () => void;
+  residents: { residentId: number; caseControlNo: string }[];
+  defaultResidentId: number | null;
+  onCreated: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [residentId, setResidentId] = useState<number>(() => {
+    const first = residents[0]?.residentId ?? 0;
+    return defaultResidentId ?? first;
+  });
+  const [sessionDate, setSessionDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [socialWorker, setSocialWorker] = useState('');
+  const [sessionType, setSessionType] = useState<'Individual' | 'Group'>('Individual');
+  const [sessionDurationMinutes, setSessionDurationMinutes] = useState(45);
+  const [emotionalStateObserved, setEmotionalStateObserved] = useState<
+    'Calm' | 'Anxious' | 'Sad' | 'Angry' | 'Hopeful' | 'Withdrawn' | 'Happy' | 'Distressed'
+  >('Calm');
+  const [emotionalStateEnd, setEmotionalStateEnd] = useState<
+    'Calm' | 'Anxious' | 'Sad' | 'Angry' | 'Hopeful' | 'Withdrawn' | 'Happy' | 'Distressed'
+  >('Calm');
+  const [sessionNarrative, setSessionNarrative] = useState('');
+  const [interventionsApplied, setInterventionsApplied] = useState('');
+  const [followUpActions, setFollowUpActions] = useState('');
+  const [progressNoted, setProgressNoted] = useState(false);
+  const [concernsFlagged, setConcernsFlagged] = useState(false);
+  const [referralMade, setReferralMade] = useState(false);
+  const [notesRestricted, setNotesRestricted] = useState<string>('');
+
+  const canSubmit =
+    residentId > 0 &&
+    !!sessionDate &&
+    socialWorker.trim().length > 0 &&
+    sessionDurationMinutes > 0 &&
+    sessionNarrative.trim().length > 0 &&
+    interventionsApplied.trim().length > 0 &&
+    followUpActions.trim().length > 0;
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit || saving) return;
+    setSaving(true);
+    setError(null);
+
+    const payload: CreateProcessRecordingRequest = {
+      residentId,
+      sessionDate,
+      socialWorker: socialWorker.trim(),
+      sessionType,
+      sessionDurationMinutes,
+      emotionalStateObserved,
+      emotionalStateEnd,
+      sessionNarrative: sessionNarrative.trim(),
+      interventionsApplied: interventionsApplied.trim(),
+      followUpActions: followUpActions.trim(),
+      progressNoted,
+      concernsFlagged,
+      referralMade,
+      notesRestricted: notesRestricted.trim() ? notesRestricted.trim() : null,
+    };
+
+    const res = await apiPost<CreateProcessRecordingRequest, unknown>('/api/ProcessRecordings', payload);
+    setSaving(false);
+    if (res.data !== null) {
+      onCreated();
+    } else {
+      setError(res.error ?? 'Could not save process recording');
+    }
+  }
+
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 z-50 bg-foreground/35 backdrop-blur-[2px] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-card border border-border rounded-lg max-w-lg w-full p-6"
+        className="w-full max-w-3xl max-h-[90svh] overflow-y-auto rounded-3xl border border-border bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-serif text-2xl text-foreground mb-1">New Process Recording</h2>
-        <p className="text-xs text-muted-foreground mb-4">
-          Preview only — submission is disabled until auth is wired up.
-        </p>
-
-        <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
+        <div className="sticky top-0 bg-white border-b border-border px-6 py-4 flex items-center justify-between">
           <div>
-            <label className="text-xs uppercase tracking-wide text-muted-foreground">
-              Session Type
-            </label>
-            <select className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background">
-              <option>Individual</option>
-              <option>Group</option>
-              <option>Crisis</option>
-              <option>Family</option>
-            </select>
+            <h2 className="text-2xl font-serif text-foreground">New Process Recording</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              This will create a new process recording for the selected resident.
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 w-9 rounded-full border border-border hover:bg-background transition-colors grid place-items-center"
+            aria-label="Close process recording modal"
+          >
+            <span className="text-lg leading-none text-foreground">×</span>
+          </button>
+        </div>
+
+        <div className="px-6 py-5">
+          {error ? <p className="text-xs text-destructive mb-3">{error}</p> : null}
+
+          <form className="space-y-3" onSubmit={onSubmit}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Resident</label>
+              <select
+                className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                value={residentId}
+                onChange={(e) => setResidentId(Number(e.target.value))}
+              >
+                {residents.map((r) => (
+                  <option key={r.residentId} value={r.residentId}>
+                    {r.caseControlNo}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Session date</label>
+              <input
+                type="date"
+                className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                value={sessionDate}
+                onChange={(e) => setSessionDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Social worker</label>
+              <input
+                className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                value={socialWorker}
+                onChange={(e) => setSocialWorker(e.target.value)}
+                placeholder="Name"
+              />
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Session type</label>
+              <select
+                className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                value={sessionType}
+                onChange={(e) => setSessionType(e.target.value as 'Individual' | 'Group')}
+              >
+                <option value="Individual">Individual</option>
+                <option value="Group">Group</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Duration (min)</label>
+              <input
+                type="number"
+                min={1}
+                className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                value={sessionDurationMinutes}
+                onChange={(e) => setSessionDurationMinutes(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Emotional state (start)</label>
+              <select
+                className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                value={emotionalStateObserved}
+                onChange={(e) => setEmotionalStateObserved(e.target.value as typeof emotionalStateObserved)}
+              >
+                {['Calm', 'Anxious', 'Sad', 'Angry', 'Hopeful', 'Withdrawn', 'Happy', 'Distressed'].map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Emotional state (end)</label>
+              <select
+                className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+                value={emotionalStateEnd}
+                onChange={(e) => setEmotionalStateEnd(e.target.value as typeof emotionalStateEnd)}
+              >
+                {['Calm', 'Anxious', 'Sad', 'Angry', 'Hopeful', 'Withdrawn', 'Happy', 'Distressed'].map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div>
-            <label className="text-xs uppercase tracking-wide text-muted-foreground">
-              Narrative
-            </label>
+            <label className="text-xs uppercase tracking-wide text-muted-foreground">Session narrative</label>
             <textarea
-              rows={4}
+              rows={3}
               className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
-              placeholder="Session notes…"
+              value={sessionNarrative}
+              onChange={(e) => setSessionNarrative(e.target.value)}
             />
           </div>
+          <div>
+            <label className="text-xs uppercase tracking-wide text-muted-foreground">Interventions applied</label>
+            <textarea
+              rows={2}
+              className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+              value={interventionsApplied}
+              onChange={(e) => setInterventionsApplied(e.target.value)}
+              placeholder="e.g., CBT; grounding; art therapy"
+            />
+          </div>
+          <div>
+            <label className="text-xs uppercase tracking-wide text-muted-foreground">Follow up actions</label>
+            <textarea
+              rows={2}
+              className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+              value={followUpActions}
+              onChange={(e) => setFollowUpActions(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={progressNoted}
+                onChange={(e) => setProgressNoted(e.target.checked)}
+              />
+              Progress noted
+            </label>
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={concernsFlagged}
+                onChange={(e) => setConcernsFlagged(e.target.checked)}
+              />
+              Concerns flagged
+            </label>
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={referralMade}
+                onChange={(e) => setReferralMade(e.target.checked)}
+              />
+              Referral made
+            </label>
+          </div>
+
+          <div>
+            <label className="text-xs uppercase tracking-wide text-muted-foreground">Notes restricted (optional)</label>
+            <textarea
+              rows={2}
+              className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-border bg-background"
+              value={notesRestricted}
+              onChange={(e) => setNotesRestricted(e.target.value)}
+              placeholder="Restricted-access notes…"
+            />
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm rounded-md border border-border hover:bg-muted"
+              disabled={saving}
+              className="px-4 py-2 text-sm rounded-md border border-border hover:bg-muted disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled
-              className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground opacity-50 cursor-not-allowed"
-              title="Save disabled — preview only"
+              disabled={!canSubmit || saving}
+              className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title={!canSubmit ? 'Fill all required fields' : undefined}
             >
-              Save (disabled)
+              {saving ? 'Saving…' : 'Save'}
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

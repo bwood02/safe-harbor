@@ -150,7 +150,10 @@ export function useResidentsForPicker(): QueryState<ResidentPicker[]> {
   return state;
 }
 
-export function useProcessRecordings(residentId: number | null): QueryState<ProcessRecordingSession[]> {
+export function useProcessRecordings(
+  residentId: number | null,
+  reloadToken?: number,
+): QueryState<ProcessRecordingSession[]> {
   const [state, setState] = useState<QueryState<ProcessRecordingSession[]>>({
     data: null,
     loading: true,
@@ -175,7 +178,7 @@ export function useProcessRecordings(residentId: number | null): QueryState<Proc
     return () => {
       cancelled = true;
     };
-  }, [residentId]);
+  }, [residentId, reloadToken]);
 
   return state;
 }
