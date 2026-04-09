@@ -82,6 +82,26 @@ public class ProcessRecordingsController : ControllerBase
         public string? NotesRestricted { get; set; }
     }
 
+    /// <summary>
+    /// Update payload: no primary key or foreign keys — recording is identified by the route; resident cannot be changed.
+    /// </summary>
+    public class UpdateProcessRecordingRequest
+    {
+        public DateOnly SessionDate { get; set; }
+        public string SocialWorker { get; set; } = "";
+        public string SessionType { get; set; } = "";
+        public int SessionDurationMinutes { get; set; }
+        public string EmotionalStateObserved { get; set; } = "";
+        public string EmotionalStateEnd { get; set; } = "";
+        public string SessionNarrative { get; set; } = "";
+        public string InterventionsApplied { get; set; } = "";
+        public string FollowUpActions { get; set; } = "";
+        public bool ProgressNoted { get; set; }
+        public bool ConcernsFlagged { get; set; }
+        public bool ReferralMade { get; set; }
+        public string? NotesRestricted { get; set; }
+    }
+
     [HttpGet]
     public async Task<ActionResult<PagedResultDto<ProcessRecordingDto>>> GetByResident(
         [FromQuery] int residentId,
@@ -194,6 +214,78 @@ public class ProcessRecordingsController : ControllerBase
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetOne), new { id = entity.RecordingId }, ToDto(entity));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(503, new { error = "Database unavailable", detail = ex.Message });
+        }
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<ProcessRecordingDto>> Update(int id, [FromBody] UpdateProcessRecordingRequest request)
+    {
+        if (request == null)
+            return BadRequest(new { error = "Request body is required" });
+        if (string.IsNullOrWhiteSpace(request.SocialWorker))
+            return BadRequest(new { error = "socialWorker is required" });
+        if (string.IsNullOrWhiteSpace(request.SessionType))
+            return BadRequest(new { error = "sessionType is required" });
+        if (request.SessionDurationMinutes <= 0)
+            return BadRequest(new { error = "sessionDurationMinutes must be positive" });
+        if (string.IsNullOrWhiteSpace(request.EmotionalStateObserved))
+            return BadRequest(new { error = "emotionalStateObserved is required" });
+        if (string.IsNullOrWhiteSpace(request.EmotionalStateEnd))
+            return BadRequest(new { error = "emotionalStateEnd is required" });
+        if (string.IsNullOrWhiteSpace(request.SessionNarrative))
+            return BadRequest(new { error = "sessionNarrative is required" });
+        if (string.IsNullOrWhiteSpace(request.InterventionsApplied))
+            return BadRequest(new { error = "interventionsApplied is required" });
+        if (string.IsNullOrWhiteSpace(request.FollowUpActions))
+            return BadRequest(new { error = "followUpActions is required" });
+
+        try
+        {
+            var entity = await _context.ProcessRecordings.FirstOrDefaultAsync(x => x.RecordingId == id);
+            if (entity == null)
+                return NotFound();
+
+            entity.SessionDate = request.SessionDate;
+            entity.SocialWorker = request.SocialWorker.Trim();
+            entity.SessionType = request.SessionType.Trim();
+            entity.SessionDurationMinutes = request.SessionDurationMinutes;
+            entity.EmotionalStateObserved = request.EmotionalStateObserved.Trim();
+            entity.EmotionalStateEnd = request.EmotionalStateEnd.Trim();
+            entity.SessionNarrative = request.SessionNarrative.Trim();
+            entity.InterventionsApplied = request.InterventionsApplied.Trim();
+            entity.FollowUpActions = request.FollowUpActions.Trim();
+            entity.ProgressNoted = request.ProgressNoted;
+            entity.ConcernsFlagged = request.ConcernsFlagged;
+            entity.ReferralMade = request.ReferralMade;
+            entity.NotesRestricted = string.IsNullOrWhiteSpace(request.NotesRestricted)
+                ? null
+                : request.NotesRestricted.Trim();
+
+            await _context.SaveChangesAsync();
+            return Ok(ToDto(entity));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(503, new { error = "Database unavailable", detail = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        try
+        {
+            var entity = await _context.ProcessRecordings.FirstOrDefaultAsync(x => x.RecordingId == id);
+            if (entity == null)
+                return NotFound();
+
+            _context.ProcessRecordings.Remove(entity);
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
         catch (Exception ex)
         {
