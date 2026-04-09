@@ -7,6 +7,9 @@ import CaseloadInventoryPage from '@/pages/CaseloadInventory';
 import DonorDashboardPage from '@/pages/DonorDashboard';
 import DonorsContributionsPage from '@/pages/DonorsContributions';
 import ProcessRecordingPage from '@/pages/ProcessRecording';
+import VisitationLogsPage from '@/pages/VisitationLogs';
+import ReportsAnalyticsPage from '@/pages/ReportsAnalytics';
+import SocialMediaDashboardPage from '@/pages/SocialMediaDashboard';
 
 export default function App() {
   return (
@@ -18,6 +21,9 @@ export default function App() {
       <Route path="/caseload" element={<CaseloadInventoryPage />} />
       <Route path="/donors" element={<DonorsContributionsPage />} />
       <Route path="/process-recordings" element={<ProcessRecordingPage />} />
+      <Route path="/home-visits" element={<VisitationLogsPage />} />
+      <Route path="/reports" element={<ReportsAnalyticsPage />} />
+      <Route path="/social-media" element={<SocialMediaDashboardPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

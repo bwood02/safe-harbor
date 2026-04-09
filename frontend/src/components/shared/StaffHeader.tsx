@@ -7,6 +7,9 @@ const navLinks = [
   { to: '/caseload', label: 'Caseload' },
   { to: '/donors', label: 'Donors' },
   { to: '/process-recordings', label: 'Process Recording' },
+  { to: '/home-visits', label: 'Home Visits' },
+  { to: '/reports', label: 'Reports' },
+  { to: '/social-media', label: 'Social Media' },
 ];
 
 export default function StaffHeader() {
