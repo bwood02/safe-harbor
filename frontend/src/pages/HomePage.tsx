@@ -1,13 +1,19 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import AdminDonatePromptModal from '@/components/shared/AdminDonatePromptModal';
 import AppHeader from '@/components/shared/AppHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
 import { useHomepageStats } from '@/hooks/usePublicImpact';
 import { useAuth } from '@/context/AuthContext';
+import { logoutUser } from '@/lib/AuthApi';
 
 export default function HomePage() {
   const { data, loading, isMock } = useHomepageStats();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authSession, refreshAuthState } = useAuth();
   const navigate = useNavigate();
+  const [showAdminDonateModal, setShowAdminDonateModal] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
   const stats = [
     { label: 'Girls supported', value: data.girlsSupported },
@@ -43,11 +49,31 @@ export default function HomePage() {
   ];
 
   function handleDonateClick() {
+    const roles = authSession.roles ?? [];
+    if (isAuthenticated && roles.includes('Admin')) {
+      setLogoutError(null);
+      setShowAdminDonateModal(true);
+      return;
+    }
     if (isAuthenticated) {
       navigate('/donor');
       return;
     }
     navigate('/login?redirect=%2Fdonor');
+  }
+
+  async function handleLoginAsDonor() {
+    setLogoutBusy(true);
+    setLogoutError(null);
+    try {
+      await logoutUser();
+      await refreshAuthState();
+      navigate('/login?redirect=%2Fdonor');
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : 'Unable to sign out.');
+    } finally {
+      setLogoutBusy(false);
+    }
   }
 
   return (
@@ -160,6 +186,17 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+
+      <AdminDonatePromptModal
+        open={showAdminDonateModal}
+        busy={logoutBusy}
+        error={logoutError}
+        onClose={() => {
+          if (logoutBusy) return;
+          setShowAdminDonateModal(false);
+        }}
+        onLoginAsDonor={() => void handleLoginAsDonor()}
+      />
 
       <PublicFooter />
     </div>

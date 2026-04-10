@@ -1,7 +1,11 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import AdminDonatePromptModal from '@/components/shared/AdminDonatePromptModal';
 import AppHeader from '@/components/shared/AppHeader';
 import PublicFooter from '@/components/shared/PublicFooter';
 import { featuredStory, restorationStories } from '@/data/featuredStory';
+import { useAuth } from '@/context/AuthContext';
+import { logoutUser } from '@/lib/AuthApi';
 import {
   useImpactSummary,
   useOutcomeDistribution,
@@ -9,6 +13,11 @@ import {
 } from '@/hooks/useImpact';
 
 export default function ImpactDashboardPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated, authSession, refreshAuthState } = useAuth();
+  const [showAdminDonateModal, setShowAdminDonateModal] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const summary = useImpactSummary();
   const outcomesQuery = useOutcomeDistribution();
   const trendQuery = useMonthlyDonationTrend();
@@ -49,6 +58,34 @@ export default function ImpactDashboardPage() {
     S003: '/impact/stories/academic-excellence',
   };
 
+  function handleDonateClick() {
+    const roles = authSession.roles ?? [];
+    if (isAuthenticated && roles.includes('Admin')) {
+      setLogoutError(null);
+      setShowAdminDonateModal(true);
+      return;
+    }
+    if (isAuthenticated) {
+      navigate('/donor');
+      return;
+    }
+    navigate('/login?redirect=%2Fdonor');
+  }
+
+  async function handleLoginAsDonor() {
+    setLogoutBusy(true);
+    setLogoutError(null);
+    try {
+      await logoutUser();
+      await refreshAuthState();
+      navigate('/login?redirect=%2Fdonor');
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : 'Unable to sign out.');
+    } finally {
+      setLogoutBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -75,10 +112,12 @@ export default function ImpactDashboardPage() {
               </p>
               <div className="flex flex-wrap gap-3 sm:gap-4">
                 <button
+                  type="button"
+                  onClick={handleDonateClick}
                   className="px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full bg-primary text-white text-base sm:text-lg font-medium hover:bg-primary/90 transition-colors shadow-sm"
                   aria-label="Donate now to support Safe Harbor"
                 >
-                  Support Our Work
+                  Donate
                 </button>
                 <Link
                   to={storyPathById.S001}
@@ -321,6 +360,17 @@ export default function ImpactDashboardPage() {
           </div>
         </div>
       </section>
+
+      <AdminDonatePromptModal
+        open={showAdminDonateModal}
+        busy={logoutBusy}
+        error={logoutError}
+        onClose={() => {
+          if (logoutBusy) return;
+          setShowAdminDonateModal(false);
+        }}
+        onLoginAsDonor={() => void handleLoginAsDonor()}
+      />
 
       <PublicFooter />
     </div>
