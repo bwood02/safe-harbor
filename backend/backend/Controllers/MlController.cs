@@ -34,6 +34,14 @@ public class MlController : ControllerBase
     private string? MlBaseUrl => _configuration["Ml:BaseUrl"]?.Trim();
     private string? MlApiKey => _configuration["Ml:ApiKey"]?.Trim();
 
+    /// <summary>Host only (e.g. safe-harbor-fastapi-....azurewebsites.net) for admin diagnostics — avoids relying on Azure Log Stream.</summary>
+    private static string? MlBaseUrlHostOnly(string? mlBaseUrl)
+    {
+        var t = mlBaseUrl?.Trim();
+        if (string.IsNullOrWhiteSpace(t)) return null;
+        return Uri.TryCreate(t, UriKind.Absolute, out var u) ? u.Host : null;
+    }
+
     private HttpClient? CreateMlClient()
     {
         var baseUrl = MlBaseUrl;
@@ -53,6 +61,8 @@ public class MlController : ControllerBase
             {
                 mlServiceConfigured = false,
                 message = "Ml:BaseUrl is not set",
+                mlBaseUrlHost = (string?)null,
+                mlApiKeyConfigured = !string.IsNullOrEmpty(MlApiKey),
                 checkedAtUtc = DateTime.UtcNow,
                 pipelines = PipelineMeta.All.Select(p => new
                 {
@@ -103,6 +113,8 @@ public class MlController : ControllerBase
             {
                 mlServiceConfigured = true,
                 mlReachable = healthOk,
+                mlBaseUrlHost = MlBaseUrlHostOnly(MlBaseUrl),
+                mlApiKeyConfigured = !string.IsNullOrEmpty(MlApiKey),
                 checkedAtUtc = DateTime.UtcNow,
                 pipelines,
             });
@@ -115,6 +127,8 @@ public class MlController : ControllerBase
                 mlServiceConfigured = true,
                 mlReachable = false,
                 message = ex.Message,
+                mlBaseUrlHost = MlBaseUrlHostOnly(MlBaseUrl),
+                mlApiKeyConfigured = !string.IsNullOrEmpty(MlApiKey),
                 checkedAtUtc = DateTime.UtcNow,
                 pipelines = PipelineMeta.All.Select(p => new
                 {

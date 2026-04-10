@@ -13,6 +13,9 @@ export interface MlDeploymentStatus {
   mlServiceConfigured: boolean;
   mlReachable?: boolean;
   message?: string;
+  /** Host .NET uses for Ml:BaseUrl (admin diagnostics; avoids Azure Log Stream). */
+  mlBaseUrlHost?: string | null;
+  mlApiKeyConfigured?: boolean;
   checkedAtUtc: string;
   pipelines: MlPipelineStatusRow[];
 }

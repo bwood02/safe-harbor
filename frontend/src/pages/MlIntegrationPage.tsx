@@ -57,6 +57,25 @@ export default function MlIntegrationPage() {
                 </p>
               )}
               {data.message && <p className="text-amber-800">{data.message}</p>}
+              {(data.mlBaseUrlHost != null || data.mlApiKeyConfigured != null) && (
+                <p className="text-muted-foreground">
+                  <span className="font-medium text-foreground">Backend ML host:</span>{' '}
+                  <code className="text-xs">
+                    {data.mlBaseUrlHost ?? '(none — set Azure App Setting Ml__BaseUrl on this backend)'}
+                  </code>
+                  {data.mlBaseUrlHost === 'localhost' && (
+                    <span className="text-destructive font-medium"> — still using localhost; Azure did not override appsettings.json.</span>
+                  )}
+                  {data.mlApiKeyConfigured != null && (
+                    <>
+                      {' '}
+                      <span className="text-muted-foreground">(API key set on backend:</span>{' '}
+                      {data.mlApiKeyConfigured ? 'yes' : 'no'}
+                      <span className="text-muted-foreground">)</span>
+                    </>
+                  )}
+                </p>
+              )}
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-border bg-white shadow-sm">
