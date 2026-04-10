@@ -3,6 +3,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { loginUser } from '@/lib/AuthApi';
 import { useAuth } from '@/context/AuthContext';
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+if (!apiBaseUrl) {
+  throw new Error('VITE_API_BASE_URL is not configured.');
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,7 +42,7 @@ export default function LoginPage() {
   }
 
   function handleGoogleLogin() {
-    const googleLoginUrl = `https://localhost:7200/api/auth/google-login?returnUrl=${encodeURIComponent(
+    const googleLoginUrl = `${apiBaseUrl}/api/auth/google-login?returnUrl=${encodeURIComponent(
       safeRedirect
     )}`;
     window.location.href = googleLoginUrl;
