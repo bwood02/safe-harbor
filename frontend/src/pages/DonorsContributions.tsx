@@ -1118,8 +1118,10 @@ export default function DonorsContributionsPage() {
           </aside>
         </div>
 
+        {/* Program area + ML panels: space-y avoids margin-collapse hugging between cards */}
+        <div className="mt-8 space-y-8">
         {/* Program area breakdown */}
-        <section className="mt-8 bg-card border border-border rounded-lg p-5">
+        <section className="bg-card border border-border rounded-lg p-5">
           <div className="flex items-baseline justify-between mb-1 gap-3 flex-wrap">
             <h2 className="font-serif text-xl text-foreground">
               Allocations by program area
@@ -1200,6 +1202,7 @@ export default function DonorsContributionsPage() {
 
         <MlDonorChurnPanel page={page} pageSize={PAGE_SIZE} totalCount={supporters.data?.total} />
         <MlDonorHighValuePanel page={page} pageSize={PAGE_SIZE} />
+        </div>
       </main>
       <PublicFooter />
 

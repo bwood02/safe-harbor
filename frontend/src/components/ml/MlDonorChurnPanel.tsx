@@ -35,7 +35,7 @@ export default function MlDonorChurnPanel({ page: _page, pageSize: _pageSize, to
 
   return (
     <section
-      className="mt-8 rounded-2xl border border-border bg-white shadow-sm p-6 mb-8"
+      className="rounded-2xl border border-border bg-white shadow-sm p-6 mb-0"
       aria-label="Live ML donor churn scores"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4">

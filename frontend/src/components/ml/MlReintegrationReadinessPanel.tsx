@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMlReintegrationReadinessScores } from '@/hooks/useMlReintegrationReadinessScores';
+import MlResidentLabelCell from '@/components/ml/MlResidentLabelCell';
 import QuestionTooltip from '@/components/shared/QuestionTooltip';
 
 const PAGE_SIZE = 10;
@@ -69,7 +70,7 @@ export default function MlReintegrationReadinessPanel() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-muted-foreground uppercase text-xs tracking-wide">
-                <th className="py-2 pr-4">Resident ID</th>
+                <th className="py-2 pr-4">Resident</th>
                 <th className="py-2 pr-4">
                   Readiness probability
                   <QuestionTooltip
@@ -82,7 +83,7 @@ export default function MlReintegrationReadinessPanel() {
             <tbody>
               {visibleRows.map((r) => (
                 <tr key={r.residentId} className="border-b border-border/60">
-                  <td className="py-2 pr-4 font-mono">{r.residentId}</td>
+                  <MlResidentLabelCell residentId={r.residentId} residentName={r.residentName} />
                   <td className="py-2 pr-4">
                     {r.error ? (
                       <span className="text-destructive text-xs">{r.error}</span>

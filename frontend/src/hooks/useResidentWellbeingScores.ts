@@ -2,9 +2,19 @@ import { useEffect, useState } from 'react';
 import { apiGet } from '@/lib/api';
 import type { ResidentWellbeingScoreRow } from '@/types/ml';
 
+function pickResidentName(raw: Record<string, unknown>): string {
+  const v =
+    raw.residentName ??
+    raw.resident_name ??
+    raw.caseControlNo ??
+    raw.case_control_no;
+  return v != null ? String(v).trim() : '';
+}
+
 function normalizeRow(raw: Record<string, unknown>): ResidentWellbeingScoreRow {
   return {
     residentId: Number(raw.residentId ?? raw.resident_id),
+    residentName: pickResidentName(raw),
     predictedWellbeingNext: Number(raw.predictedWellbeingNext ?? raw.predicted_wellbeing_next ?? 0),
     wellbeingLag: Number(raw.wellbeingLag ?? raw.wellbeing_lag ?? 0),
     error: raw.error != null ? String(raw.error) : null,
