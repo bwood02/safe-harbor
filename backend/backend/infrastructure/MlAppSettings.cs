@@ -3,9 +3,8 @@ using Microsoft.Extensions.Configuration;
 namespace backend.Infrastructure;
 
 /// <summary>
-/// Resolves ML FastAPI base URL and API key from configuration and environment.
-/// Azure App Service maps <c>Ml__BaseUrl</c> to <c>Ml:BaseUrl</c>; typo keys are checked explicitly.
-/// Loopback URLs from published JSON are ignored on Azure or in Production/Staging so a real app setting can win.
+/// Resolves ML URL and API key from IConfiguration plus raw env (Azure sometimes differs from config binding).
+/// On Azure or in Production/Staging, ignores loopback BaseUrl from JSON so a real app setting can win.
 /// </summary>
 public static class MlAppSettings
 {
@@ -34,9 +33,9 @@ public static class MlAppSettings
         var fromConfig = configuration["Ml:BaseUrl"]?.Trim();
         if (!string.IsNullOrWhiteSpace(fromConfig))
         {
-            var rejectConfigLoopback = IsRunningOnAzureAppService() || IsProductionLike();
-            if (!(rejectConfigLoopback && IsLoopbackMlBase(fromConfig)))
-                return NormalizeBaseUrl(fromConfig);
+            var rejectLoopback = IsRunningOnAzureAppService() || IsProductionLike();
+            if (!(rejectLoopback && IsLoopbackMlBase(fromConfig)))
+                return fromConfig.TrimEnd('/');
         }
 
         foreach (var key in new[]
@@ -50,7 +49,7 @@ public static class MlAppSettings
             var v = Environment.GetEnvironmentVariable(key)?.Trim();
             if (string.IsNullOrWhiteSpace(v)) continue;
             if (IsRunningOnAzureAppService() && IsLoopbackMlBase(v)) continue;
-            return NormalizeBaseUrl(v);
+            return v.TrimEnd('/');
         }
 
         return null;
@@ -58,19 +57,16 @@ public static class MlAppSettings
 
     public static string? ResolveApiKey(IConfiguration configuration)
     {
-        var k = configuration["Ml:ApiKey"]?.Trim();
-        if (!string.IsNullOrWhiteSpace(k))
-            return k;
+        var fromConfig = configuration["Ml:ApiKey"]?.Trim();
+        if (!string.IsNullOrWhiteSpace(fromConfig))
+            return fromConfig;
 
         foreach (var key in new[] { "Ml__ApiKey", "APPSETTING_Ml__ApiKey", "Ml_ApiKey" })
         {
             var v = Environment.GetEnvironmentVariable(key)?.Trim();
-            if (!string.IsNullOrWhiteSpace(v))
-                return v;
+            if (!string.IsNullOrWhiteSpace(v)) return v;
         }
 
         return null;
     }
-
-    private static string NormalizeBaseUrl(string url) => url.TrimEnd('/');
 }
