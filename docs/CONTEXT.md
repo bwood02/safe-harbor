@@ -34,13 +34,12 @@ INTEX W26 capstone project for IS 401 (PM), IS 413 (Dev), IS 414 (Security), IS 
 - Backend Identity: `backend/backend/Models/AuthIdentityDbContext.cs`, `Models/AuthIdentityGenerator.cs`, `Controllers/AuthController.cs`
 
 ### What's needed next
-- Merge PR #45 (prod deploy fixes -- conditional OAuth, static files public)
-- Set up GitHub Actions for auto-deploy to App Service (needs bwood02 to authorize Azure, or write workflow manually)
+- Brandon must redeploy FastAPI with updated `ml_service/` for donor-high-value scores
+- Fix CI/CD workflow (`main_safe-harbor.yml`) to target `safe-harbor-app` resource group `safe-harbor` (currently targets non-existent app)
+- Google Safe Browsing false positive on OAuth redirect (new Azure subdomain, no reputation)
 - Lighthouse a11y >= 90% audit
-- 5 page screenshots desktop+mobile for IS 401 Thursday deliverable
-- User feedback session, retrospective, OKR metric, burndown update
-- Final submission Friday 10am
-- Old Vercel/SWA frontends can be decommissioned
+- Final submission Friday Apr 10 at 10am
+- Presentations Friday Apr 10 at 12pm
 
 ## Tech Stack
 

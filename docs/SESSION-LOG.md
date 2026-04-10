@@ -4,6 +4,45 @@
 
 ---
 
+## 2026-04-09 late / 2026-04-10 early -- ML connectivity, Google OAuth, deploy fixes (Michael)
+
+**What was done:**
+- Connected deployed backend to Brandon's FastAPI ML service via Azure App Settings (`Ml__BaseUrl`, `Ml__ApiKey`)
+- Fixed donor-high-value endpoint defaulting `asOf` to `DateTime.UtcNow` (April 2026) instead of latest donation month from DB
+- Added `rows_for_snapshot_month` fallback to latest available snapshot in `ml_service/features/donor_high_value.py`
+- Added `-13` month offset for donor-high-value snapshot alignment (feature builder caps at max-12mo)
+- Restored `MlAppSettings.cs` accidentally deleted by Brandon's "fixed spacing" commit
+- Resolved merge conflict markers Brandon pushed to main unresolved
+- Fixed Google OAuth startup crash -- Brandon's security PR removed conditional null check, crashing Azure where creds weren't set
+- Added `UseForwardedHeaders` in `Program.cs` for correct OAuth redirects behind Azure reverse proxy
+- Fixed `LoginPage.tsx` -- was reading `VITE_API_BASE_URL` directly (undefined/localhost at build time); now uses `API_BASE_URL` from `api.ts` (relative paths for same-origin)
+- Set Google OAuth credentials, `Frontend__BaseUrl` in Azure App Settings
+- Deleted old Static Web App (`safe-harbor` SWA)
+- Added `DisplayName` to donor churn response (shows supporter names instead of IDs)
+
+**Files changed:**
+- `backend/backend/Controllers/MlController.cs` (asOf fix, DisplayName on churn scores)
+- `backend/backend/Program.cs` (conditional Google OAuth restored, UseForwardedHeaders)
+- `backend/backend/infrastructure/MlAppSettings.cs` (restored + conflict resolved)
+- `ml_service/ml_service/features/donor_high_value.py` (snapshot month fallback)
+- `frontend/src/pages/LoginPage.tsx` (relative Google login URL)
+- `frontend/src/types/ml.ts` (displayName on DonorChurnScoreRow)
+- `frontend/src/hooks/useMlDonorChurnScores.ts` (normalize displayName)
+- `frontend/src/components/ml/MlDonorChurnPanel.tsx` (show name instead of ID)
+
+**Decisions made:**
+- `safe-harbor-app` (Canada Central) is the single production deployment; Brandon's CI/CD targets a non-existent App Service
+- Manual deploy via `az webapp deploy --type zip` remains the deploy method until CI/CD is fixed
+- Google OAuth is conditional -- only registered if credentials are in config (prevents crash on envs without them)
+
+**Next steps:**
+- Brandon must redeploy FastAPI with updated `ml_service/` for donor-high-value scores to work
+- Fix CI/CD workflow to target `safe-harbor-app` in `safe-harbor` resource group
+- Google Safe Browsing false positive on Azure subdomain (new domain, no reputation)
+- Final submission Friday 10am
+
+---
+
 ## 2026-04-09 evening -- Azure App Service deployment, same-origin auth fix (Michael)
 
 **What was done:**
