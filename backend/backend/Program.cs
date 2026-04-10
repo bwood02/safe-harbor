@@ -104,7 +104,8 @@ builder.Services.AddCors(options =>
                 "http://127.0.0.1:5173",
                 "https://safe-harbor.vercel.app",
                 "https://nice-beach-0045c401e.6.azurestaticapps.net",
-                "https://safeharbor.mhammerventures.com"
+                "https://safeharbor.mhammerventures.com",
+                "https://safe-harbor-app-cbhbghfvgzerf5f4.canadacentral-01.azurewebsites.net"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
