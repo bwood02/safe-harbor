@@ -8,6 +8,20 @@ namespace backend.Models
             IServiceProvider serviceProvider,
             IConfiguration configuration)
         {
+            try
+            {
+                await SeedAsync(serviceProvider, configuration);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Seeder failed (non-fatal): {ex.Message}");
+            }
+        }
+
+        private static async Task SeedAsync(
+            IServiceProvider serviceProvider,
+            IConfiguration configuration)
+        {
             Console.WriteLine("Seeder started");
 
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
