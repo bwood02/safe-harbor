@@ -392,6 +392,14 @@ export default function DonorsContributionsPage() {
   const programAreas = useDonationsByProgramArea(donationRefreshToken);
   const programAreasForSelected = useDonationsByProgramAreaForSupporter(selectedId, donationRefreshToken);
 
+  const supporterNameById = useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const s of supporters.data?.items ?? []) {
+      map[s.supporterId] = s.displayName;
+    }
+    return map;
+  }, [supporters.data?.items]);
+
   const kpis = useMemo(() => {
     const totalSupporters = supporters.data?.total ?? 0;
     const activeMonetary =
@@ -1201,7 +1209,7 @@ export default function DonorsContributionsPage() {
         </section>
 
         <MlDonorChurnPanel page={page} pageSize={PAGE_SIZE} totalCount={supporters.data?.total} />
-        <MlDonorHighValuePanel page={page} pageSize={PAGE_SIZE} />
+        <MlDonorHighValuePanel page={page} pageSize={PAGE_SIZE} supporterNameById={supporterNameById} />
         </div>
       </main>
       <PublicFooter />

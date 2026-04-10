@@ -4,9 +4,10 @@ import { useMlDonorHighValueScores } from '@/hooks/useMlDonorHighValueScores';
 type Props = {
   page: number;
   pageSize: number;
+  supporterNameById?: Record<number, string>;
 };
 
-export default function MlDonorHighValuePanel({ page, pageSize }: Props) {
+export default function MlDonorHighValuePanel({ page, pageSize, supporterNameById }: Props) {
   const { rows, loading, error } = useMlDonorHighValueScores(page, pageSize);
 
   return (
@@ -47,14 +48,16 @@ export default function MlDonorHighValuePanel({ page, pageSize }: Props) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-muted-foreground uppercase text-xs tracking-wide">
-                <th className="py-2 pr-4">Supporter ID</th>
+                <th className="py-2 pr-4">Supporter</th>
                 <th className="py-2 pr-4">High-value probability</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.supporterId} className="border-b border-border/60">
-                  <td className="py-2 pr-4 font-mono">{r.supporterId}</td>
+                  <td className="py-2 pr-4">
+                    {supporterNameById?.[r.supporterId] ?? r.supporterId}
+                  </td>
                   <td className="py-2 pr-4">
                     {r.error ? (
                       <span className="text-destructive text-xs">{r.error}</span>
