@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using backend.Infrastructure;
 using backend.Models;
 
 namespace backend.Controllers;
@@ -31,8 +32,8 @@ public class MlController : ControllerBase
         _logger = logger;
     }
 
-    private string? MlBaseUrl => _configuration["Ml:BaseUrl"]?.Trim();
-    private string? MlApiKey => _configuration["Ml:ApiKey"]?.Trim();
+    private string? MlBaseUrl => MlAppSettings.ResolveBaseUrl(_configuration);
+    private string? MlApiKey => MlAppSettings.ResolveApiKey(_configuration);
 
     /// <summary>Host only (e.g. safe-harbor-fastapi-....azurewebsites.net) for admin diagnostics — avoids relying on Azure Log Stream.</summary>
     private static string? MlBaseUrlHostOnly(string? mlBaseUrl)

@@ -25,11 +25,11 @@ builder.Services.AddDbContext<MainAppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("MainAppDbConnection")));
 
-// ML API client
+// ML API client (see MlAppSettings: Azure ignores loopback from JSON; env Ml__BaseUrl / APPSETTING_Ml__BaseUrl)
 builder.Services.AddHttpClient("MlApi", (sp, client) =>
 {
     var cfg = sp.GetRequiredService<IConfiguration>();
-    var baseUrl = cfg["Ml:BaseUrl"]?.Trim().TrimEnd('/');
+    var baseUrl = MlAppSettings.ResolveBaseUrl(cfg);
 
     if (!string.IsNullOrWhiteSpace(baseUrl))
     {
@@ -124,11 +124,11 @@ builder.Services.AddAuthorization(options =>
 var app = builder.Build();
 
 // Diagnostic: use category SafeHarbor.Ml so this is not filtered by "Microsoft.AspNetCore": "Warning" in appsettings.json.
-var mlBaseResolved = app.Configuration["Ml:BaseUrl"]?.Trim();
+var mlBaseResolved = MlAppSettings.ResolveBaseUrl(app.Configuration);
 var mlDiag = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SafeHarbor.Ml");
 mlDiag.LogInformation(
-    "ML proxy: Ml:BaseUrl resolved to {Value}",
-    string.IsNullOrEmpty(mlBaseResolved) ? "(empty — check Azure App Setting Ml__BaseUrl, two underscores)" : mlBaseResolved);
+    "ML proxy: effective BaseUrl is {Value}",
+    string.IsNullOrEmpty(mlBaseResolved) ? "(empty — set Application setting Ml__BaseUrl on this backend, then restart)" : mlBaseResolved);
 
 // ==============================
 // SEED DEFAULT IDENTITY DATA
