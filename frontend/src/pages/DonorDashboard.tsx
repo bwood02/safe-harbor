@@ -358,6 +358,32 @@ export default function DonorDashboardPage() {
     }
   }
 
+  const filteredDonations = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return donations.filter((d) => {
+      const matchesSearch =
+        needle.length === 0 ||
+        d.donation_id.toString().includes(needle) ||
+        d.donation_type.toLowerCase().includes(needle) ||
+        (d.campaign_name ?? '').toLowerCase().includes(needle);
+      const matchesType = typeFilter === 'All' || d.donation_type === typeFilter;
+      const matchesRecurring =
+        recurringFilter === 'All' ||
+        (recurringFilter === 'Recurring' ? d.is_recurring : !d.is_recurring);
+      const matchesAllocation = allocationFilter === 'All' || d.allocation_area === allocationFilter;
+      return matchesSearch && matchesType && matchesRecurring && matchesAllocation;
+    });
+  }, [donations, search, typeFilter, recurringFilter, allocationFilter]);
+
+  const allocationPercentages = useMemo(() => {
+    const total = donations.length;
+    return SNAPSHOT_AREAS.map((area) => {
+      const count = donations.filter((d) => d.allocation_area === area).length;
+      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      return { area, pct, count };
+    });
+  }, [donations]);
+
   if (linkGateOpen) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
@@ -570,32 +596,6 @@ export default function DonorDashboardPage() {
       </div>
     );
   }
-
-  const filteredDonations = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return donations.filter((d) => {
-      const matchesSearch =
-        needle.length === 0 ||
-        d.donation_id.toString().includes(needle) ||
-        d.donation_type.toLowerCase().includes(needle) ||
-        (d.campaign_name ?? '').toLowerCase().includes(needle);
-      const matchesType = typeFilter === 'All' || d.donation_type === typeFilter;
-      const matchesRecurring =
-        recurringFilter === 'All' ||
-        (recurringFilter === 'Recurring' ? d.is_recurring : !d.is_recurring);
-      const matchesAllocation = allocationFilter === 'All' || d.allocation_area === allocationFilter;
-      return matchesSearch && matchesType && matchesRecurring && matchesAllocation;
-    });
-  }, [donations, search, typeFilter, recurringFilter, allocationFilter]);
-
-  const allocationPercentages = useMemo(() => {
-    const total = donations.length;
-    return SNAPSHOT_AREAS.map((area) => {
-      const count = donations.filter((d) => d.allocation_area === area).length;
-      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-      return { area, pct, count };
-    });
-  }, [donations]);
 
   function openModal() {
     setForm(emptyDonationForm());
