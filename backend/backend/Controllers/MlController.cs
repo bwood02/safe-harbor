@@ -463,9 +463,22 @@ public class MlController : ControllerBase
         if (page < 1) page = 1;
         if (pageSize < 1 || pageSize > 100) pageSize = 25;
 
-        var asOfDate = string.IsNullOrWhiteSpace(asOf)
-            ? DateOnly.FromDateTime(DateTime.UtcNow)
-            : DateOnly.Parse(asOf);
+        DateOnly asOfDate;
+        if (!string.IsNullOrWhiteSpace(asOf))
+        {
+            asOfDate = DateOnly.Parse(asOf);
+        }
+        else
+        {
+            var maxDonationDate = await _context.Donations.AsNoTracking()
+                .Where(d => d.DonationDate != null)
+                .MaxAsync(d => d.DonationDate, ct);
+
+            if (!maxDonationDate.HasValue)
+                return Ok(Array.Empty<DonorHighValueScoreRow>());
+
+            asOfDate = new DateOnly(maxDonationDate.Value.Year, maxDonationDate.Value.Month, 1);
+        }
 
         var supporterIds = await _context.Supporters.AsNoTracking()
             .OrderBy(s => s.DisplayName)
