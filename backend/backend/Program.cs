@@ -123,6 +123,12 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+// Single-line diagnostic: Azure Log stream / console shows what IConfiguration resolved for ML (env Ml__BaseUrl → Ml:BaseUrl).
+var mlBaseResolved = app.Configuration["Ml:BaseUrl"]?.Trim();
+app.Logger.LogInformation(
+    "ML proxy: Ml:BaseUrl resolved to {Value}",
+    string.IsNullOrEmpty(mlBaseResolved) ? "(empty — check Azure App Setting Ml__BaseUrl, two underscores)" : mlBaseResolved);
+
 // ==============================
 // SEED DEFAULT IDENTITY DATA
 // ==============================
