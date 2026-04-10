@@ -296,7 +296,12 @@ def train_donor_high_value_rf(model_df: pd.DataFrame) -> tuple[Pipeline, list[st
 def rows_for_snapshot_month(model_df: pd.DataFrame, as_of: str) -> pd.DataFrame:
     # Align with panel snapshot_month (month-end from training date_range freq="M").
     ts = pd.Timestamp(as_of[:10]).to_period("M").to_timestamp("M")
-    return model_df[model_df["snapshot_month"] == ts].copy()
+    subset = model_df[model_df["snapshot_month"] == ts]
+    if subset.empty and not model_df.empty:
+        # Requested month not in panel — fall back to latest available snapshot.
+        latest = model_df["snapshot_month"].max()
+        subset = model_df[model_df["snapshot_month"] == latest]
+    return subset.copy()
 
 
 def predict_high_value_proba(
