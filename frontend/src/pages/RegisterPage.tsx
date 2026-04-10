@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { registerUser } from '@/lib/AuthApi';
+import { loginUser, registerUser } from '@/lib/AuthApi';
+import { useAuth } from '@/context/AuthContext';
 
 const SUPPORTER_TYPES = [
   'MonetaryDonor',
@@ -25,6 +26,7 @@ const STATUSES = ['Active', 'Inactive'] as const;
 export default function RegisterPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { refreshAuthState } = useAuth();
   const redirectParam = new URLSearchParams(location.search).get('redirect');
   const safeRedirect = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/';
 
@@ -76,9 +78,11 @@ export default function RegisterPage() {
         acquisitionChannel,
         organizationName: supporterType === 'PartnerOrganization' ? organizationName : null,
       });
-      setSuccessMessage('Registration succeeded. You can log in now.');
+      await loginUser(email, password);
+      await refreshAuthState();
+      setSuccessMessage('Registration succeeded. Redirecting…');
       setNeedsSupporterProfile(false);
-      setTimeout(() => navigate(`/login?redirect=${encodeURIComponent(safeRedirect)}`), 800);
+      navigate(safeRedirect === '/donor' ? '/donor' : '/');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to register.';
       setErrorMessage(message);
