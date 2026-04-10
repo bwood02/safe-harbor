@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
 
       - name: Build with dotnet
         run: dotnet build backend/backend/backend.csproj --configuration Release
-      
+
       - name: dotnet publish
         run: dotnet publish backend/backend/backend.csproj -c Release -o "${{env.DOTNET_ROOT}}/myapp"
 
@@ -39,37 +39,36 @@ jobs:
     runs-on: windows-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write
+      contents: read
 
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_87AF6D01AE804AC7AB5D99F1B1215DFF }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_500395890D6447AD865E2715CE3C4DEC }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_CEC352C8BB7E4AA28BF1609FB0A1CAB7 }}
 
       - name: Set ML app settings
         run: |
           az webapp config appsettings set `
             --resource-group "appsvc_windows_centralus" `
             --name "safe-harbor" `
-            --settings Ml__BaseUrl="https://safe-harbor-fastapi-dkfvdmgzg2eve8gm.centralus-01.azurewebsites.net" Ml__ApiKey="${{ secrets.ML_API_KEY }}"          
+            --settings Ml__BaseUrl="https://safe-harbor-fastapi-dkfvdmgzg2eve8gm.centralus-01.azurewebsites.net" Ml__ApiKey="${{ secrets.ML_API_KEY }}"
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'safe-harbor'
           slot-name: 'Production'
           package: .
-      
+
       - name: Restart app
-        run: az webapp restart --resource-group "appsvc_windows_centralus" --name "safe-harbor"          
+        run: az webapp restart --resource-group "appsvc_windows_centralus" --name "safe-harbor"      
           
