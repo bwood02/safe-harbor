@@ -56,15 +56,20 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<AuthIdentityDbContext>()
 .AddDefaultTokenProviders();
 
-// Google external authentication
-builder.Services
-    .AddAuthentication()
-    .AddGoogle("Google", options =>
-    {
-        options.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
-        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
-        options.CallbackPath = "/signin-google";
-    });
+// Google external authentication (optional — skipped if credentials not configured)
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret))
+{
+    builder.Services
+        .AddAuthentication()
+        .AddGoogle("Google", options =>
+        {
+            options.ClientId = googleClientId;
+            options.ClientSecret = googleClientSecret;
+            options.CallbackPath = "/signin-google";
+        });
+}
 
 // Cookie settings
 builder.Services.ConfigureApplicationCookie(options =>
@@ -74,6 +79,17 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
+    // Return 401 for API calls instead of redirecting to /Account/Login
+    options.Events.OnRedirectToLogin = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        }
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
 });
 
 // CORS for frontend
@@ -160,14 +176,16 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// Serve React frontend from wwwroot/ (before auth so static files are public)
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Serve React frontend from wwwroot/ (Vite build output)
-app.UseDefaultFiles();
-app.UseStaticFiles();
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html")
+    .AllowAnonymous();
 
 app.Run();
